@@ -176,6 +176,7 @@ function renderKids(){
       <label><input type="checkbox" ${k.chat_locked?'checked':''} onchange="setKid('${k.id}',{chat_locked:this.checked})"> Lock chat setting</label>
       <button class="small secondary" onclick="resetPin('${k.id}')">Reset PIN</button>
       <button class="small secondary" onclick="resetSeason('${k.id}')">New season</button>
+      <button class="small secondary" onclick="resetToday('${k.id}')">Reset today's 20 min</button>
     </div>
     <div class="row" style="margin-top:8px"><span class="tag">Shelter:</span>${kidDogs.filter(d=>d.kid_id===k.id).map(d=>`<span style="background:var(--panel);border-radius:10px;padding:4px 8px;display:inline-flex;align-items:center;gap:6px"><img src="${d.image_url||'assets/dogs/'+d.breed+'.png'}" style="height:28px">${esc(d.name)} <a href="#" onclick="removeDog('${d.id}','${esc(d.name)}');return false" title="Remove from shelter" style="color:var(--bad);text-decoration:none">✕</a></span>`).join('')||'<span class="tag">empty</span>'}</div></div>`).join('')||'<p class="tag">No kids yet.</p>';
 }
@@ -186,6 +187,7 @@ async function addKid(){
   try{await rpc('add_kid',{p_name:$('kName').value.trim(),p_pin:$('kPin').value.trim(),p_grade:+$('kGrade').value});$('kName').value='';$('kPin').value='';await load()}catch(e){$('kidErr').textContent=e.message}
 }
 async function resetPin(id){const p=prompt('New 4-digit PIN');if(!p)return;try{await rpc('set_kid_pin',{p_kid:id,p_pin:p.trim()});alert('PIN updated')}catch(e){alert(e.message)}}
+async function resetToday(id){if(!confirm('Give this kid their full 20 minutes back for today?'))return;try{await rpc('reset_kid_today',{p_kid:id});alert('Done. Have them reload the game.')}catch(e){alert(e.message)}}
 async function resetSeason(id){if(!confirm('Start a new 30-play-day season for this kid? Days played resets to 0 (coins and dogs stay).'))return;await setKid(id,{season_start:new Date().toISOString().slice(0,10)});await load()}
 
 async function loadLinks(){
