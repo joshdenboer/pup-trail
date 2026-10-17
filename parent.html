@@ -85,6 +85,19 @@
         <p class="tag">You can read every message your kids send or receive.</p>
         <div id="chatlog"></div>
       </div>
+
+      <div class="card" id="done" style="border:2px solid var(--good)">
+        <h2>✅ You're all set</h2>
+        <div id="checklist"></div>
+        <p style="margin-top:12px">Your kid logs in at <b>puptrail.netlify.app</b> with:</p>
+        <table style="max-width:420px"><tr><td>Family code</td><td class="code" style="font-size:22px;letter-spacing:3px" id="doneCode"></td></tr><tr><td>Name</td><td>exactly as you typed it above</td></tr><tr><td>PIN</td><td>the 4 digits you chose</td></tr></table>
+        <div class="row" style="margin-top:14px">
+          <a href="index.html" target="_blank"><button>🐾 Open the game for your kid</button></a>
+          <button class="secondary" onclick="copyCode()">Copy family code</button>
+          <button class="secondary" onclick="copyInvite()">Copy invite text for another parent</button>
+        </div>
+        <p class="tag" style="margin-top:10px">That's everything. Come back here any time to add kids, approve friend families, change settings, or read the chat log. Nothing else needs setup.</p>
+      </div>
     </div>
   </div>
 </div>
@@ -125,13 +138,13 @@ async function load(){
   $('noFamily').classList.add('hide');$('family').classList.remove('hide');
   $('famTitle').textContent=fam.name;$('famCode').textContent=fam.invite_code;$('prize').value=fam.season_prize||'';
   const {data:k}=await sb.from('kids').select('*').order('created_at');kids=k||[];
-  renderKids();await loadLinks();await loadActivity();await loadChat();
+  renderKids();await loadLinks();await loadActivity();await loadChat();renderChecklist();
 }
 async function createFamily(){
   $('famErr').textContent='';
   try{await rpc('create_family',{p_name:$('famName').value.trim()||'My Family',p_parent_name:$('parentName').value.trim()});await load()}catch(e){$('famErr').textContent=e.message}
 }
-async function savePrize(){const {error}=await sb.from('families').update({season_prize:$('prize').value.trim()||null}).eq('id',fam.id);if(error)alert(error.message);else alert('Saved')}
+async function savePrize(){const {error}=await sb.from('families').update({season_prize:$('prize').value.trim()||null}).eq('id',fam.id);if(error)alert(error.message);else{fam.season_prize=$('prize').value.trim();renderChecklist();alert('Saved')}}
 
 function renderKids(){
   $('kids').innerHTML=kids.map(k=>`<div class="kid">
@@ -164,7 +177,7 @@ async function loadLinks(){
       <td>${l.status==='pending'&&!mine?`<button class="small" onclick="respond('${l.id}',true)">Approve</button> <button class="small secondary" onclick="respond('${l.id}',false)">Decline</button>`:''}</td></tr>`}).join('')+'</table>';
 }
 async function requestFriend(){$('friendErr').textContent='';try{await rpc('request_friend',{p_code:$('friendCode').value});$('friendCode').value='';await loadLinks()}catch(e){$('friendErr').textContent=e.message}}
-async function respond(id,ok){try{await rpc('respond_friend',{p_link:id,p_approve:ok});await loadLinks()}catch(e){alert(e.message)}}
+async function respond(id,ok){try{await rpc('respond_friend',{p_link:id,p_approve:ok});await loadLinks();renderChecklist()}catch(e){alert(e.message)}}
 
 async function loadActivity(){
   const since=new Date(Date.now()-14*864e5).toISOString().slice(0,10);
@@ -174,6 +187,14 @@ async function loadActivity(){
   $('activity').innerHTML='<h3>Minutes played (last 14 days)</h3><table><tr><th>Day</th><th>Kid</th><th>Minutes</th></tr>'+(pd||[]).map(p=>`<tr><td>${p.day}</td><td>${esc(byKid(p.kid_id))}</td><td>${Math.round(p.seconds/60)}</td></tr>`).join('')+'</table>'+
     '<h3>Recent trails</h3><table><tr><th>When</th><th>Kid</th><th>Trail</th><th>Score</th><th>Coins</th></tr>'+(runs||[]).map(r=>`<tr><td>${new Date(r.started_at).toLocaleString()}</td><td>${esc(byKid(r.kid_id))}</td><td>${r.world} ${r.mode==='career'?'Lv '+r.level:'quick'}${r.finished_at?'':' (in progress)'}</td><td>${r.total?r.correct+'/'+r.total:''}</td><td>${r.coins}</td></tr>`).join('')+'</table>';
 }
+
+function renderChecklist(){
+  const items=[['Parent account',true],['Family created',!!fam],['At least one kid added',kids.length>0],['Season prize set',!!(fam&&fam.season_prize)],['A friend family connected',links.some(l=>l.status==='approved')]];
+  $('checklist').innerHTML=items.map(([t,ok])=>`<div>${ok?'✅':'⬜'} ${t}${!ok&&t.startsWith('A friend')?' <span class="tag">(optional, do this when another family is ready)</span>':''}${!ok&&t.startsWith('Season')?' <span class="tag">(optional)</span>':''}</div>`).join('');
+  $('doneCode').textContent=fam?fam.invite_code:'';
+}
+function copyCode(){navigator.clipboard.writeText(fam.invite_code).then(()=>alert('Copied: '+fam.invite_code))}
+function copyInvite(){const t=`Hi! We set up a kids' game called Pup Trail. It's invite-only and parent-approved. To connect our kids:\n1. Go to https://puptrail.netlify.app/parent.html and create a parent account.\n2. Create your family and add your kid with a 4-digit PIN.\n3. Under "Friend families", enter our code: ${fam.invite_code} and click Send request. I'll approve it on my side.\nKids play at https://puptrail.netlify.app (20 minutes a day, built in).`;navigator.clipboard.writeText(t).then(()=>alert('Invite text copied. Paste it into a text or email.'))}
 async function loadChat(){
   const {data:ms}=await sb.from('messages').select('*').order('created_at',{ascending:false}).limit(100);
   const name=id=>kids.find(k=>k.id===id)?.name||'friend';
