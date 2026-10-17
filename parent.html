@@ -2,12 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2a1c5e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pup Trail Parents">
+<link rel="apple-touch-icon" href="assets/ui/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
 <title>Pup Trail · Parents</title>
 <style>
   :root{--bg:#1b1140;--panel:#2a1c5e;--panel2:#3b2a7a;--ink:#f7f3ff;--muted:#c3b6ea;--purple:#8b5cf6;--blue:#4fa3ff;--pink:#ff6fcf;--good:#5eead4;--bad:#ff7a9a;--gold:#ffd166}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:"Trebuchet MS",Verdana,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  button,select,a{touch-action:manipulation}
+  body{margin:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);font-family:"Trebuchet MS",Verdana,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
   button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:10px 16px;background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;font-weight:700;font-size:16px}
   button.secondary{background:var(--panel2)} button.small{padding:6px 10px;font-size:14px} button.danger{background:var(--bad);color:#3a0919}
   input,select,textarea{font:inherit;padding:9px;border-radius:10px;border:2px solid var(--panel2);background:#fff;color:#222;font-size:16px;max-width:100%}
@@ -22,6 +30,8 @@
   h1{margin:0 0 4px} h2{margin:0 0 10px}
   .hide{display:none}
   label{display:inline-flex;gap:6px;align-items:center}
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  @media (max-width:600px){.wrap{padding:12px}h1{font-size:24px}input{width:100%}.row input{flex:1 1 100%}.code{font-size:24px;letter-spacing:3px}td,th{font-size:13px;padding:5px 6px}}
 </style>
 </head>
 <body>
@@ -195,10 +205,10 @@ async function loadLinks(){
   if(!links.length){$('links').innerHTML='<p class="tag">No friend families yet.</p>';return}
   const ids=[...new Set(links.flatMap(l=>[l.family_a,l.family_b]))];
   // we can only read our own family row, so show the other side by code lookup via a tiny RPC-less fallback: show ids + status
-  $('links').innerHTML='<table><tr><th>Family</th><th>Status</th><th></th></tr>'+links.map(l=>{
+  $('links').innerHTML='<div class="tw"><table><tr><th>Family</th><th>Status</th><th></th></tr>'+links.map(l=>{
     const other=l.family_a===fam.id?l.family_b:l.family_a;const mine=l.requested_by===user.id;
     return `<tr><td>${esc(l.other_name||('Family '+other.slice(0,8)))}</td><td>${l.status==='approved'?'✅ Connected':l.status==='declined'?'❌ Declined':mine?'⏳ Waiting for their parent':'🔔 They want to connect'}</td>
-      <td>${l.status==='pending'&&!mine?`<button class="small" onclick="respond('${l.id}',true)">Approve</button> <button class="small secondary" onclick="respond('${l.id}',false)">Decline</button>`:''}</td></tr>`}).join('')+'</table>';
+      <td>${l.status==='pending'&&!mine?`<button class="small" onclick="respond('${l.id}',true)">Approve</button> <button class="small secondary" onclick="respond('${l.id}',false)">Decline</button>`:''}</td></tr>`}).join('')+'</table></div>';
 }
 async function requestFriend(){$('friendErr').textContent='';try{await rpc('request_friend',{p_code:$('friendCode').value});$('friendCode').value='';await loadLinks()}catch(e){$('friendErr').textContent=e.message}}
 async function respond(id,ok){try{await rpc('respond_friend',{p_link:id,p_approve:ok});await loadLinks();renderChecklist()}catch(e){alert(e.message)}}
@@ -254,8 +264,8 @@ async function loadActivity(){
   const {data:pd}=await sb.from('play_days').select('*').gte('day',since).order('day',{ascending:false});
   const {data:runs}=await sb.from('trail_runs').select('*').order('started_at',{ascending:false}).limit(30);
   const byKid=id=>kids.find(k=>k.id===id)?.name||'?';
-  $('activity').innerHTML='<h3>Minutes played (last 14 days)</h3><table><tr><th>Day</th><th>Kid</th><th>Minutes</th></tr>'+(pd||[]).map(p=>`<tr><td>${p.day}</td><td>${esc(byKid(p.kid_id))}</td><td>${Math.round(p.seconds/60)}</td></tr>`).join('')+'</table>'+
-    '<h3>Recent trails</h3><table><tr><th>When</th><th>Kid</th><th>Trail</th><th>Score</th><th>Coins</th></tr>'+(runs||[]).map(r=>`<tr><td>${new Date(r.started_at).toLocaleString()}</td><td>${esc(byKid(r.kid_id))}</td><td>${r.world} ${r.mode==='career'?'Lv '+r.level:'quick'}${r.finished_at?'':' (in progress)'}</td><td>${r.total?r.correct+'/'+r.total:''}</td><td>${r.coins}</td></tr>`).join('')+'</table>';
+  $('activity').innerHTML='<h3>Minutes played (last 14 days)</h3><div class="tw"><table><tr><th>Day</th><th>Kid</th><th>Minutes</th></tr>'+(pd||[]).map(p=>`<tr><td>${p.day}</td><td>${esc(byKid(p.kid_id))}</td><td>${Math.round(p.seconds/60)}</td></tr>`).join('')+'</table></div>'+
+    '<h3>Recent trails</h3><div class="tw"><table><tr><th>When</th><th>Kid</th><th>Trail</th><th>Score</th><th>Coins</th></tr>'+(runs||[]).map(r=>`<tr><td>${new Date(r.started_at).toLocaleString()}</td><td>${esc(byKid(r.kid_id))}</td><td>${r.world} ${r.mode==='career'?'Lv '+r.level:'quick'}${r.finished_at?'':' (in progress)'}</td><td>${r.total?r.correct+'/'+r.total:''}</td><td>${r.coins}</td></tr>`).join('')+'</table></div>';
 }
 
 function renderChecklist(){
@@ -268,7 +278,7 @@ function copyInvite(){const t=`Hi! We set up a kids' game called Pup Trail. It's
 async function loadChat(){
   const {data:ms}=await sb.from('messages').select('*').order('created_at',{ascending:false}).limit(100);
   const name=id=>kids.find(k=>k.id===id)?.name||'friend';
-  $('chatlog').innerHTML=(ms||[]).length?'<table>'+ms.map(m=>`<tr><td class="tag">${new Date(m.created_at).toLocaleString()}</td><td><b>${esc(name(m.from_kid))}</b> → ${esc(name(m.to_kid))}</td><td>${esc(m.body)}</td></tr>`).join('')+'</table>':'<p class="tag">No messages yet.</p>';
+  $('chatlog').innerHTML=(ms||[]).length?'<div class="tw"><table>'+ms.map(m=>`<tr><td class="tag">${new Date(m.created_at).toLocaleString()}</td><td><b>${esc(name(m.from_kid))}</b> → ${esc(name(m.to_kid))}</td><td>${esc(m.body)}</td></tr>`).join('')+'</table></div>':'<p class="tag">No messages yet.</p>';
 }
 if(!PUP_CONFIG.SUPABASE_URL)$('authErr').textContent='Setup needed: add the Supabase URL and key to config.js.';else boot();
 </script>

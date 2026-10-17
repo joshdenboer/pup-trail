@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2a1c5e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pup Trail">
+<link rel="apple-touch-icon" href="assets/ui/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
 <title>Pup Trail</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
 <style>
@@ -10,8 +17,9 @@
     --bg:#1b1140; --panel:#2a1c5e; --panel2:#3b2a7a; --ink:#f7f3ff; --muted:#c3b6ea;
     --purple:#8b5cf6; --blue:#4fa3ff; --pink:#ff6fcf; --good:#5eead4; --bad:#ff7a9a; --gold:#ffd166;
   }
-  *{box-sizing:border-box}
-  body{margin:0;font-family:"Trebuchet MS",Verdana,sans-serif;background:radial-gradient(circle at 30% 0%, #3a2378 0, var(--bg) 55%);color:var(--ink);min-height:100vh}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  button,select,a{touch-action:manipulation}
+  body{margin:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);font-family:"Trebuchet MS",Verdana,sans-serif;background:radial-gradient(circle at 30% 0%, #3a2378 0, var(--bg) 55%);color:var(--ink);min-height:100vh}
   button{font:inherit;cursor:pointer;border:0;border-radius:14px;padding:12px 18px;background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;font-weight:700;font-size:17px;box-shadow:0 4px 0 #26174f}
   button.pink{background:linear-gradient(135deg,var(--pink),var(--purple))}
   button.secondary{background:var(--panel2);box-shadow:none}
@@ -91,6 +99,15 @@
   .world span{position:absolute;left:10px;bottom:8px;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000}
   .world.locked{opacity:.45;cursor:default}
   .big{font-size:60px;text-align:center}
+  .profiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:10px}
+  .profile{background:var(--panel2);border-radius:16px;padding:10px;text-align:center;cursor:pointer;font-weight:700;font-size:18px}
+  .profile:hover{outline:3px solid var(--pink)}
+  .profile .av{width:70px;height:120px;margin:0 auto 6px}
+  .pinDots{display:flex;gap:14px;justify-content:center;margin:14px 0}
+  .pinDots i{width:18px;height:18px;border-radius:50%;background:var(--panel2);border:2px solid var(--muted)}
+  .pinDots i.on{background:var(--pink);border-color:var(--pink)}
+  .pinPad{display:grid;grid-template-columns:repeat(3,76px);gap:10px;justify-content:center}
+  .pinPad button{font-size:26px;padding:14px 0;background:var(--panel2);box-shadow:none}
   .prize{background:linear-gradient(135deg,#ff6fcf33,#4fa3ff33);border:2px dashed var(--pink)}
   .board td,.board th{padding:6px 8px;text-align:left}
   .board{width:100%;border-collapse:collapse}
@@ -99,7 +116,19 @@
   .msg.me{align-self:flex-end;background:var(--purple)}
   .err{color:var(--bad);font-weight:700;min-height:22px}
   .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--pink);color:#fff;padding:10px 18px;border-radius:30px;font-weight:700;display:none;z-index:9}
-  @media (max-width:600px){.choices{grid-template-columns:1fr}.scene{height:230px}.walker img{height:90px}.walker img.dog{height:58px}.grid2{grid-template-columns:1fr}}
+  .boardWrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  @media (max-width:600px){
+    .choices{grid-template-columns:1fr}.scene{height:230px}.grid2{grid-template-columns:1fr}
+    .topbar{font-size:14px;padding:6px 10px;gap:6px 10px}.topbar .hideSm{display:none}
+    #hub .topbar{display:grid;grid-template-columns:auto auto auto;justify-content:space-between;align-items:center;row-gap:4px}
+    #hub .topbar .av{display:none!important}
+    #hub .topbar button{justify-self:end;padding:5px 9px}
+    .q{font-size:19px}.choices button{font-size:18px;padding:13px}.passage{font-size:15px}
+    .board td,.board th{padding:5px 6px;font-size:13px}
+    .screen{padding:10px 12px 40px}h1{font-size:32px}
+    .shelter{height:230px}.shelter .sign{height:46%}
+  }
+  @media (min-width:601px) and (max-width:1024px){.scene{height:280px}}
 </style>
 </head>
 <body>
@@ -108,14 +137,24 @@
 <!-- LOGIN -->
 <section id="login" class="screen active">
   <img class="logo" src="assets/ui/logo.png" alt="Pup Trail">
-  <div class="card">
-    <h2>Log in</h2>
-    <p class="tag">Ask a parent for your family code. Then type your name and your 4-digit PIN.</p>
-    <div class="row"><input id="lCode" placeholder="Family code" maxlength="8" style="text-transform:uppercase"></div>
-    <div class="row" style="margin-top:8px"><input id="lName" placeholder="Your name" maxlength="20"></div>
-    <div class="row" style="margin-top:8px"><input id="lPin" placeholder="PIN" inputmode="numeric" maxlength="4" type="password"></div>
+  <div class="card" id="codeStep">
+    <h2>Welcome!</h2>
+    <p class="tag">First time on this device? Ask a parent for your family code. You only have to type it once.</p>
+    <div class="row"><input id="lCode" placeholder="Family code" maxlength="8" style="text-transform:uppercase;flex:1"><button onclick="findFamily()">Next</button></div>
     <div class="err" id="lErr"></div>
-    <div class="row"><button onclick="login()">Let's go!</button><a class="tag" href="parent.html" style="margin-left:auto">Parents →</a></div>
+    <div class="row" style="margin-top:6px"><a class="tag" href="parent.html" style="margin-left:auto">Parents →</a></div>
+  </div>
+  <div class="card" id="whoStep" style="display:none">
+    <div class="row"><h2 style="margin:0">Who's playing?</h2><span class="tag" id="famName"></span></div>
+    <div class="profiles" id="profiles"></div>
+    <div class="row" style="margin-top:10px"><a href="#" class="tag" onclick="forgetFamily();return false">Different family</a><a class="tag" href="parent.html" style="margin-left:auto">Parents →</a></div>
+  </div>
+  <div class="card" id="pinStep" style="display:none">
+    <div class="row"><div id="pinAvatar"></div><h2 style="margin:0">Hi <span id="pinName"></span>! Your PIN?</h2></div>
+    <div class="pinDots" id="pinDots"><i></i><i></i><i></i><i></i></div>
+    <div class="pinPad" id="pinPad"></div>
+    <div class="err" id="pinErr"></div>
+    <div class="row"><a href="#" class="tag" onclick="showWho();return false">← Not you?</a></div>
   </div>
 </section>
 
@@ -123,7 +162,7 @@
 <section id="hub" class="screen">
   <div class="topbar">
     <span id="hubName"></span>
-    <span class="coins">🪙 <span id="hubCoins">0</span> Pup Coins</span>
+    <span class="coins">🪙 <span id="hubCoins">0</span><span class="hideSm"> Pup Coins</span></span>
     <span>Today: <span class="timer" id="hubTimer">20:00</span></span>
     <span class="tag">Day <span id="hubDays">0</span>/<span id="hubSeasonLen">30</span></span>
     <button class="small secondary" onclick="toggleMute()" id="muteBtn">🔊</button>
@@ -250,7 +289,7 @@
   <div class="card">
     <h2>👯 Friends</h2>
     <p class="tag">Everyone gets the same 20 minutes a day. The season is <span id="frSeasonLen"></span> play-days, so vacations never count against you.</p>
-    <table class="board" id="board"></table>
+    <div class="boardWrap"><table class="board" id="board"></table></div>
     <p class="tag" id="noFriends" style="display:none">No friends yet. Ask a parent to connect with another family using your family code.</p>
   </div>
   <div class="row"><button class="secondary" onclick="goHub()">Back</button></div>
@@ -305,6 +344,7 @@ async function rpc(fn, args){
 }
 function dogImg(d){return d.image_url||`assets/dogs/${d.breed}.png`}
 function dogScale(d){return +(d.size||SIZE[d.breed]||1)}
+function SP(){return window.innerWidth<600?0.72:1}
 function breedOf(d){return BREEDS[d.breed]||BREEDS.golden}
 function crewHas(breed){return crew.some(id=>{const d=S.dogs.find(x=>x.id===id);return d&&(d.breed===breed||(breed==='golden'&&d.breed==='bear')||(breed==='labhound'&&(d.breed==='lip'||d.breed==='pet_dog'))||(breed==='dachshund'&&d.breed==='pet_cat'))})}
 function avatarHTML(av, cls=''){
@@ -333,13 +373,42 @@ function toggleMute(){muted=!muted;localStorage.setItem('pt_muted',muted?'1':'0'
 document.querySelectorAll('#muteBtn,#muteBtn2').forEach(b=>b.textContent=muted?'🔇':'🔊');
 
 /* ---------- login / state ---------- */
-async function login(){
-  const code=document.getElementById('lCode').value, name=document.getElementById('lName').value, pin=document.getElementById('lPin').value;
-  const err=document.getElementById('lErr');err.textContent='';
-  try{const r=await rpc('kid_login',{p_code:code,p_name:name,p_pin:pin});token=r.token;localStorage.setItem('pt_token',token);applyState(r.state);goHub()}
-  catch(e){err.textContent=e.message}
+let famCode=localStorage.getItem('pt_family')||'', profiles=[], pinFor=null, pin='';
+function showStep(id){['codeStep','whoStep','pinStep'].forEach(x=>document.getElementById(x).style.display=x===id?'':'none')}
+async function findFamily(){
+  const code=document.getElementById('lCode').value.trim().toUpperCase();const err=document.getElementById('lErr');err.textContent='';
+  if(code.length<4){err.textContent='Type the family code';return}
+  try{const r=await rpc('family_profiles',{p_code:code});famCode=code;localStorage.setItem('pt_family',code);renderWho(r)}catch(e){err.textContent=e.message}
 }
-function logout(msg){token=null;localStorage.removeItem('pt_token');S=null;music(false);show('login');if(msg)document.getElementById('lErr').textContent=msg}
+async function showWho(){
+  if(!famCode){showStep('codeStep');return}
+  try{const r=await rpc('family_profiles',{p_code:famCode});renderWho(r)}catch(e){forgetFamily();document.getElementById('lErr').textContent=e.message}
+}
+function renderWho(r){
+  profiles=r.kids||[];document.getElementById('famName').textContent=r.family_name||'';
+  document.getElementById('profiles').innerHTML=profiles.map((k,i)=>`<div class="profile" onclick="pickProfile(${i})">${avatarHTML(k.avatar)}${esc(k.name)}</div>`).join('')||'<p class="tag">No kids in this family yet. A parent adds them on the parent page.</p>';
+  showStep('whoStep');
+}
+function forgetFamily(){famCode='';localStorage.removeItem('pt_family');document.getElementById('lCode').value='';showStep('codeStep')}
+function pickProfile(i){
+  pinFor=profiles[i];pin='';document.getElementById('pinName').textContent=pinFor.name;document.getElementById('pinAvatar').innerHTML=avatarHTML(pinFor.avatar,'small');
+  document.getElementById('pinErr').textContent='';renderPin();
+  const pad=document.getElementById('pinPad');pad.innerHTML='';
+  ['1','2','3','4','5','6','7','8','9','⌫','0','✓'].forEach(k=>{const b=document.createElement('button');b.textContent=k;b.onclick=()=>pressPin(k);pad.appendChild(b)});
+  showStep('pinStep');
+}
+function renderPin(){[...document.getElementById('pinDots').children].forEach((d,i)=>d.classList.toggle('on',i<pin.length))}
+async function pressPin(k){
+  if(k==='⌫'){pin=pin.slice(0,-1);renderPin();return}
+  if(k==='✓'){if(pin.length===4)await login();return}
+  if(pin.length<4){pin+=k;renderPin();if(pin.length===4)await login()}
+}
+async function login(){
+  const err=document.getElementById('pinErr');err.textContent='';
+  try{const r=await rpc('kid_login',{p_code:famCode,p_name:pinFor.name,p_pin:pin});token=r.token;localStorage.setItem('pt_token',token);applyState(r.state);goHub()}
+  catch(e){err.textContent=/Wrong code/.test(e.message)?'Wrong PIN. Try again!':e.message;pin='';renderPin();beep(180,.3,'sawtooth',.12)}
+}
+function logout(msg){token=null;localStorage.removeItem('pt_token');S=null;music(false);show('login');showWho();if(msg)document.getElementById('pinErr').textContent=msg}
 function applyState(st){S=st;secondsLeft=st.seconds_left;if(!S.avatar||!Object.keys(S.avatar).length)S.avatar={...DEFAULT_AVATAR}}
 async function refresh(){applyState(await rpc('kid_state',{p_token:token}))}
 
@@ -373,7 +442,7 @@ async function goHub(){
   document.getElementById('shelterBg').src=`assets/shelters/${S.shelter_style}.jpg`;
   document.getElementById('signText').innerHTML=`${esc(S.name)}${/s$/i.test(S.name)?"'":"'s"}<small>Shelter</small>`;
   const yard=document.getElementById('yard');
-  yard.innerHTML=S.dogs.slice(0,8).map(d=>`<img src="${dogImg(d)}" title="${esc(d.name)}" onclick="openDog('${d.id}')" style="cursor:pointer;height:${Math.round(64*dogScale(d))}px">`).join('')+
+  yard.innerHTML=S.dogs.slice(0,8).map(d=>`<img src="${dogImg(d)}" title="${esc(d.name)}" onclick="openDog('${d.id}')" style="cursor:pointer;height:${Math.round(64*dogScale(d)*SP())}px">`).join('')+
     ['bowl','leash','bed'].filter(i=>(S.inventory||{})[i]).map(i=>`<span title="${ITEMS.find(x=>x.id===i).name}">${ITEMS.find(x=>x.id===i).emoji}</span>`).join('');
   document.getElementById('shelterDogs').innerHTML=S.dogs.map(d=>{const b=breedOf(d);return `<div class="dogcard" onclick="openDog('${d.id}')" style="cursor:pointer"><div style="height:80px;display:flex;align-items:flex-end;justify-content:center"><img src="${dogImg(d)}" style="height:${Math.round(80*dogScale(d))}px"></div><div class="name">${d.happiness<40?'😢 ':''}${esc(d.name)}</div><div class="tag">${b.name} · <span class="rare">${RARE_LABEL[b.rare]}</span></div><div class="meter"><i style="width:${d.happiness}%"></i></div></div>`}).join('');
 }
@@ -444,7 +513,7 @@ async function startTrail(){
   show('trail');music(true);
   document.getElementById('trailWorld').textContent=WORLDS[world].emoji+' '+WORLDS[world].name+(mode==='career'?` · Lv ${level}`:'');
   document.getElementById('bg1').src=document.getElementById('bg2').src=`assets/worlds/${world}.jpg`;
-  document.getElementById('walker').innerHTML=avatarHTML(S.avatar).replace('class="av "','class="av" style="width:70px;height:120px;position:relative"')+crew.map(id=>{const d=S.dogs.find(x=>x.id===id);return `<img class="dog" src="${dogImg(d)}" style="height:${Math.round(78*dogScale(d))}px">`}).join('');
+  document.getElementById('walker').innerHTML=avatarHTML(S.avatar).replace('class="av "',`class="av" style="width:${Math.round(70*SP())}px;height:${Math.round(120*SP())}px;position:relative"`)+crew.map(id=>{const d=S.dogs.find(x=>x.id===id);return `<img class="dog" src="${dogImg(d)}" style="height:${Math.round(78*dogScale(d)*SP())}px">`}).join('');
   document.getElementById('bossImg').style.display='none';
   clearInterval(friendPoll);friendPoll=setInterval(pollFriendsOnTrail,15000);pollFriendsOnTrail();
   const happyBonus=S.dogs.filter(d=>crew.includes(d.id)&&d.happiness>=80).length;
@@ -476,7 +545,7 @@ function showEvent(){
   document.getElementById('subject').textContent=ev.s;document.getElementById('eventTitle').textContent=ev.t;document.getElementById('bossMeter').textContent='';
   const pa=document.getElementById('passage');pa.style.display=ev.p?'':'none';pa.textContent=ev.p||'';
   let lead='';
-  if(ev.pup){const b=BREEDS[ev.pup];lead=`A ${b.name} peeks out from behind a tree! Get this right and it'll trust you. `;const ps=document.getElementById('pupSprite');ps.src=`assets/dogs/${ev.pup}.png`;ps.style.height=Math.round(84*(SIZE[ev.pup]||1))+'px';ps.style.display='';bark(ev.pup)}
+  if(ev.pup){const b=BREEDS[ev.pup];lead=`A ${b.name} peeks out from behind a tree! Get this right and it'll trust you. `;const ps=document.getElementById('pupSprite');ps.src=`assets/dogs/${ev.pup}.png`;ps.style.height=Math.round(84*(SIZE[ev.pup]||1)*SP())+'px';ps.style.display='';bark(ev.pup)}
   document.getElementById('question').textContent=lead+ev.q;
   document.getElementById('feedback').textContent='';
   document.getElementById('nextBtn').style.display='none';
@@ -647,11 +716,12 @@ async function sendMsg(){
   try{await rpc('send_message',{p_token:token,p_to:w,p_body:b});document.getElementById('msgIn').value='';loadChat(true)}catch(e){err.textContent=e.message}
 }
 document.getElementById('msgIn').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg()});
-document.getElementById('lPin').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+document.getElementById('lCode').addEventListener('keydown',e=>{if(e.key==='Enter')findFamily()});
 
 /* ---------- boot ---------- */
 if(!PUP_CONFIG.SUPABASE_URL){document.getElementById('lErr').textContent='Setup needed: add the Supabase URL and key to config.js.'}
 else if(token){goHub()}
+else{showWho()}
 </script>
 </body>
 </html>
