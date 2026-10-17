@@ -124,7 +124,7 @@
 <script src="config.js"></script>
 <script>
 const sb=supabase.createClient(PUP_CONFIG.SUPABASE_URL||'https://setup-needed.supabase.co',PUP_CONFIG.SUPABASE_ANON_KEY||'x');
-let user=null, fam=null, kids=[], links=[];
+let user=null, fam=null, kids=[], links=[], kidDogs=[];
 const $=id=>document.getElementById(id);
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 async function rpc(fn,args){const {data,error}=await sb.rpc(fn,args);if(error)throw new Error(error.message);return data}
@@ -156,6 +156,7 @@ async function load(){
   $('noFamily').classList.add('hide');$('family').classList.remove('hide');
   $('famTitle').textContent=fam.name;$('famCode').textContent=fam.invite_code;$('prize').value=fam.season_prize||'';
   const {data:k}=await sb.from('kids').select('*').order('created_at');kids=k||[];
+  const {data:dg}=await sb.from('dogs').select('id,kid_id,breed,name,image_url').order('found_at');kidDogs=dg||[];
   renderKids();await loadPets();await loadLinks();await loadActivity();await loadChat();renderChecklist();
 }
 async function createFamily(){
@@ -174,8 +175,10 @@ function renderKids(){
       <label><input type="checkbox" ${k.chat_locked?'checked':''} onchange="setKid('${k.id}',{chat_locked:this.checked})"> Lock chat setting</label>
       <button class="small secondary" onclick="resetPin('${k.id}')">Reset PIN</button>
       <button class="small secondary" onclick="resetSeason('${k.id}')">New season</button>
-    </div></div>`).join('')||'<p class="tag">No kids yet.</p>';
+    </div>
+    <div class="row" style="margin-top:8px"><span class="tag">Shelter:</span>${kidDogs.filter(d=>d.kid_id===k.id).map(d=>`<span style="background:var(--panel);border-radius:10px;padding:4px 8px;display:inline-flex;align-items:center;gap:6px"><img src="${d.image_url||'assets/dogs/'+d.breed+'.png'}" style="height:28px">${esc(d.name)} <a href="#" onclick="removeDog('${d.id}','${esc(d.name)}');return false" title="Remove from shelter" style="color:var(--bad);text-decoration:none">✕</a></span>`).join('')||'<span class="tag">empty</span>'}</div></div>`).join('')||'<p class="tag">No kids yet.</p>';
 }
+async function removeDog(id,name){if(!confirm(`Remove ${name} from this kid's shelter?`))return;try{await rpc('remove_kid_dog',{p_dog:id});await load()}catch(e){alert(e.message)}}
 async function setKid(id,patch){const {error}=await sb.from('kids').update(patch).eq('id',id);if(error)alert(error.message)}
 async function addKid(){
   $('kidErr').textContent='';
