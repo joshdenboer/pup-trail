@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pup Trail · Parents</title>
+<style>
+  :root{--bg:#1b1140;--panel:#2a1c5e;--panel2:#3b2a7a;--ink:#f7f3ff;--muted:#c3b6ea;--purple:#8b5cf6;--blue:#4fa3ff;--pink:#ff6fcf;--good:#5eead4;--bad:#ff7a9a;--gold:#ffd166}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Trebuchet MS",Verdana,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+  button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:10px 16px;background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;font-weight:700;font-size:16px}
+  button.secondary{background:var(--panel2)} button.small{padding:6px 10px;font-size:14px} button.danger{background:var(--bad);color:#3a0919}
+  input,select,textarea{font:inherit;padding:9px;border-radius:10px;border:2px solid var(--panel2);background:#fff;color:#222;font-size:16px;max-width:100%}
+  .wrap{max-width:860px;margin:0 auto;padding:16px}
+  .card{background:var(--panel);border-radius:16px;padding:16px;margin:12px 0}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .tag{color:var(--muted);font-size:14px}
+  .err{color:var(--bad);font-weight:700;min-height:22px}
+  .code{font-size:30px;letter-spacing:4px;font-weight:700;color:var(--gold);font-family:monospace}
+  table{width:100%;border-collapse:collapse} td,th{padding:6px 8px;text-align:left;border-bottom:1px solid var(--panel2);vertical-align:top}
+  .kid{background:var(--panel2);border-radius:14px;padding:12px;margin:10px 0}
+  h1{margin:0 0 4px} h2{margin:0 0 10px}
+  .hide{display:none}
+  label{display:inline-flex;gap:6px;align-items:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🐾 Pup Trail · Parent Dashboard</h1>
+  <p class="tag">Kids never need an email. You create their profile here and they log in with the family code, their name, and a 4-digit PIN. <a href="index.html" style="color:var(--pink)">← Kids' game</a></p>
+
+  <div class="card" id="authCard">
+    <h2>Sign in</h2>
+    <div class="row"><input id="email" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Password (8+ characters)"></div>
+    <div class="err" id="authErr"></div>
+    <div class="row"><button onclick="signIn()">Sign in</button><button class="secondary" onclick="signUp()">Create parent account</button></div>
+    <p class="tag" id="authNote"></p>
+  </div>
+
+  <div id="app" class="hide">
+    <div class="row" style="justify-content:flex-end"><span class="tag" id="who"></span><button class="small secondary" onclick="signOut()">Sign out</button></div>
+
+    <div class="card" id="noFamily">
+      <h2>Set up your family</h2>
+      <div class="row"><input id="famName" placeholder="Family name (e.g. The DenBoers)"><input id="parentName" placeholder="Your first name"></div>
+      <div class="err" id="famErr"></div>
+      <button onclick="createFamily()">Create family</button>
+    </div>
+
+    <div id="family" class="hide">
+      <div class="card">
+        <h2 id="famTitle"></h2>
+        <p>Family code (kids use this to log in, and other parents use it to connect):</p>
+        <div class="code" id="famCode"></div>
+        <p class="tag">Only share it with families you know.</p>
+        <div class="row" style="margin-top:10px"><label>🏆 Season prize <input id="prize" placeholder="e.g. Movie night pick + ice cream" style="width:300px"></label><button class="small" onclick="savePrize()">Save</button></div>
+        <p class="tag">Shown to your kids the whole season. A season is 30 play-days (days they actually played), so vacations never count against them.</p>
+      </div>
+
+      <div class="card">
+        <h2>Kids</h2>
+        <div id="kids"></div>
+        <h3>Add a kid</h3>
+        <div class="row"><input id="kName" placeholder="Name" maxlength="20"><input id="kPin" placeholder="4-digit PIN" inputmode="numeric" maxlength="4">
+          <select id="kGrade"><option value="2">2nd grade</option><option value="3" selected>3rd grade</option><option value="4">4th grade</option><option value="5">5th grade</option></select>
+          <button onclick="addKid()">Add</button></div>
+        <div class="err" id="kidErr"></div>
+      </div>
+
+      <div class="card">
+        <h2>Friend families</h2>
+        <p class="tag">Invites go parent to parent. Enter another family's code; their parent then approves it on their dashboard. Once approved, the kids in both families can see each other, race, and chat.</p>
+        <div class="row"><input id="friendCode" placeholder="Their family code" maxlength="8" style="text-transform:uppercase"><button onclick="requestFriend()">Send request</button></div>
+        <div class="err" id="friendErr"></div>
+        <div id="links"></div>
+      </div>
+
+      <div class="card">
+        <h2>Activity</h2>
+        <div id="activity"></div>
+      </div>
+
+      <div class="card">
+        <h2>Chat log</h2>
+        <p class="tag">You can read every message your kids send or receive.</p>
+        <div id="chatlog"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+const sb=supabase.createClient(PUP_CONFIG.SUPABASE_URL||'https://setup-needed.supabase.co',PUP_CONFIG.SUPABASE_ANON_KEY||'x');
+let user=null, fam=null, kids=[], links=[];
+const $=id=>document.getElementById(id);
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+async function rpc(fn,args){const {data,error}=await sb.rpc(fn,args);if(error)throw new Error(error.message);return data}
+
+async function signUp(){
+  $('authErr').textContent='';
+  const {data,error}=await sb.auth.signUp({email:$('email').value.trim(),password:$('pw').value});
+  if(error){$('authErr').textContent=error.message;return}
+  if(data.session){boot()}else $('authNote').textContent='Check your email to confirm your account, then sign in.';
+}
+async function signIn(){
+  $('authErr').textContent='';
+  const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('pw').value});
+  if(error){$('authErr').textContent=error.message;return}
+  boot();
+}
+async function signOut(){await sb.auth.signOut();location.reload()}
+
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){return}
+  user=session.user;$('authCard').classList.add('hide');$('app').classList.remove('hide');$('who').textContent=user.email;
+  await load();
+}
+async function load(){
+  const {data:f}=await sb.from('families').select('*').maybeSingle();
+  fam=f;
+  if(!fam){$('noFamily').classList.remove('hide');$('family').classList.add('hide');return}
+  $('noFamily').classList.add('hide');$('family').classList.remove('hide');
+  $('famTitle').textContent=fam.name;$('famCode').textContent=fam.invite_code;$('prize').value=fam.season_prize||'';
+  const {data:k}=await sb.from('kids').select('*').order('created_at');kids=k||[];
+  renderKids();await loadLinks();await loadActivity();await loadChat();
+}
+async function createFamily(){
+  $('famErr').textContent='';
+  try{await rpc('create_family',{p_name:$('famName').value.trim()||'My Family',p_parent_name:$('parentName').value.trim()});await load()}catch(e){$('famErr').textContent=e.message}
+}
+async function savePrize(){const {error}=await sb.from('families').update({season_prize:$('prize').value.trim()||null}).eq('id',fam.id);if(error)alert(error.message);else alert('Saved')}
+
+function renderKids(){
+  $('kids').innerHTML=kids.map(k=>`<div class="kid">
+    <div class="row"><b style="font-size:20px">${esc(k.name)}</b><span class="tag">🪙 ${k.coins} · Career level ${k.career_level}</span></div>
+    <div class="row" style="margin-top:8px">
+      <label>Grade <select onchange="setKid('${k.id}',{grade:+this.value})">${[2,3,4,5].map(g=>`<option value="${g}" ${k.grade===g?'selected':''}>${g}</option>`).join('')}</select></label>
+      <label><input type="checkbox" ${k.grade_locked?'checked':''} onchange="setKid('${k.id}',{grade_locked:this.checked})"> Lock grade</label>
+      <label>Chat <select onchange="setKid('${k.id}',{chat_mode:this.value})">${[['play','Play only'],['text','Text'],['voice','Voice + text']].map(([v,l])=>`<option value="${v}" ${k.chat_mode===v?'selected':''}>${l}</option>`).join('')}</select></label>
+      <label><input type="checkbox" ${k.chat_locked?'checked':''} onchange="setKid('${k.id}',{chat_locked:this.checked})"> Lock chat setting</label>
+      <button class="small secondary" onclick="resetPin('${k.id}')">Reset PIN</button>
+      <button class="small secondary" onclick="resetSeason('${k.id}')">New season</button>
+    </div></div>`).join('')||'<p class="tag">No kids yet.</p>';
+}
+async function setKid(id,patch){const {error}=await sb.from('kids').update(patch).eq('id',id);if(error)alert(error.message)}
+async function addKid(){
+  $('kidErr').textContent='';
+  try{await rpc('add_kid',{p_name:$('kName').value.trim(),p_pin:$('kPin').value.trim(),p_grade:+$('kGrade').value});$('kName').value='';$('kPin').value='';await load()}catch(e){$('kidErr').textContent=e.message}
+}
+async function resetPin(id){const p=prompt('New 4-digit PIN');if(!p)return;try{await rpc('set_kid_pin',{p_kid:id,p_pin:p.trim()});alert('PIN updated')}catch(e){alert(e.message)}}
+async function resetSeason(id){if(!confirm('Start a new 30-play-day season for this kid? Days played resets to 0 (coins and dogs stay).'))return;await setKid(id,{season_start:new Date().toISOString().slice(0,10)});await load()}
+
+async function loadLinks(){
+  const {data}=await sb.from('friend_links').select('*').order('created_at',{ascending:false});links=data||[];
+  if(!links.length){$('links').innerHTML='<p class="tag">No friend families yet.</p>';return}
+  const ids=[...new Set(links.flatMap(l=>[l.family_a,l.family_b]))];
+  // we can only read our own family row, so show the other side by code lookup via a tiny RPC-less fallback: show ids + status
+  $('links').innerHTML='<table><tr><th>Family</th><th>Status</th><th></th></tr>'+links.map(l=>{
+    const other=l.family_a===fam.id?l.family_b:l.family_a;const mine=l.requested_by===user.id;
+    return `<tr><td>${esc(l.other_name||('Family '+other.slice(0,8)))}</td><td>${l.status==='approved'?'✅ Connected':l.status==='declined'?'❌ Declined':mine?'⏳ Waiting for their parent':'🔔 They want to connect'}</td>
+      <td>${l.status==='pending'&&!mine?`<button class="small" onclick="respond('${l.id}',true)">Approve</button> <button class="small secondary" onclick="respond('${l.id}',false)">Decline</button>`:''}</td></tr>`}).join('')+'</table>';
+}
+async function requestFriend(){$('friendErr').textContent='';try{await rpc('request_friend',{p_code:$('friendCode').value});$('friendCode').value='';await loadLinks()}catch(e){$('friendErr').textContent=e.message}}
+async function respond(id,ok){try{await rpc('respond_friend',{p_link:id,p_approve:ok});await loadLinks()}catch(e){alert(e.message)}}
+
+async function loadActivity(){
+  const since=new Date(Date.now()-14*864e5).toISOString().slice(0,10);
+  const {data:pd}=await sb.from('play_days').select('*').gte('day',since).order('day',{ascending:false});
+  const {data:runs}=await sb.from('trail_runs').select('*').order('started_at',{ascending:false}).limit(30);
+  const byKid=id=>kids.find(k=>k.id===id)?.name||'?';
+  $('activity').innerHTML='<h3>Minutes played (last 14 days)</h3><table><tr><th>Day</th><th>Kid</th><th>Minutes</th></tr>'+(pd||[]).map(p=>`<tr><td>${p.day}</td><td>${esc(byKid(p.kid_id))}</td><td>${Math.round(p.seconds/60)}</td></tr>`).join('')+'</table>'+
+    '<h3>Recent trails</h3><table><tr><th>When</th><th>Kid</th><th>Trail</th><th>Score</th><th>Coins</th></tr>'+(runs||[]).map(r=>`<tr><td>${new Date(r.started_at).toLocaleString()}</td><td>${esc(byKid(r.kid_id))}</td><td>${r.world} ${r.mode==='career'?'Lv '+r.level:'quick'}${r.finished_at?'':' (in progress)'}</td><td>${r.total?r.correct+'/'+r.total:''}</td><td>${r.coins}</td></tr>`).join('')+'</table>';
+}
+async function loadChat(){
+  const {data:ms}=await sb.from('messages').select('*').order('created_at',{ascending:false}).limit(100);
+  const name=id=>kids.find(k=>k.id===id)?.name||'friend';
+  $('chatlog').innerHTML=(ms||[]).length?'<table>'+ms.map(m=>`<tr><td class="tag">${new Date(m.created_at).toLocaleString()}</td><td><b>${esc(name(m.from_kid))}</b> → ${esc(name(m.to_kid))}</td><td>${esc(m.body)}</td></tr>`).join('')+'</table>':'<p class="tag">No messages yet.</p>';
+}
+if(!PUP_CONFIG.SUPABASE_URL)$('authErr').textContent='Setup needed: add the Supabase URL and key to config.js.';else boot();
+</script>
+</body>
+</html>

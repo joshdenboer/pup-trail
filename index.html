@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pup Trail</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
+<style>
+  :root{
+    --bg:#1b1140; --panel:#2a1c5e; --panel2:#3b2a7a; --ink:#f7f3ff; --muted:#c3b6ea;
+    --purple:#8b5cf6; --blue:#4fa3ff; --pink:#ff6fcf; --good:#5eead4; --bad:#ff7a9a; --gold:#ffd166;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Trebuchet MS",Verdana,sans-serif;background:radial-gradient(circle at 30% 0%, #3a2378 0, var(--bg) 55%);color:var(--ink);min-height:100vh}
+  button{font:inherit;cursor:pointer;border:0;border-radius:14px;padding:12px 18px;background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;font-weight:700;font-size:17px;box-shadow:0 4px 0 #26174f}
+  button.pink{background:linear-gradient(135deg,var(--pink),var(--purple))}
+  button.secondary{background:var(--panel2);box-shadow:none}
+  button.small{padding:6px 10px;font-size:14px;border-radius:10px}
+  button:disabled{opacity:.5;cursor:default}
+  input,select{font:inherit;padding:10px;border-radius:10px;border:2px solid var(--panel2);background:#fff;color:#222;font-size:17px;max-width:100%}
+  .screen{display:none;max-width:900px;margin:0 auto;padding:12px 16px 40px}
+  .screen.active{display:block}
+  h1{font-size:40px;margin:8px 0 0}
+  h2{margin:4px 0 12px}
+  .tag{color:var(--muted);font-size:14px}
+  .card{background:var(--panel);border-radius:18px;padding:16px;margin:12px 0}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border-radius:14px;padding:8px 14px;margin-bottom:10px;font-weight:700}
+  .timer.low{color:var(--bad)}
+  .coins{color:var(--gold)}
+  .logo{max-width:320px;width:80%;display:block;margin:10px auto}
+  /* scene */
+  .scene{position:relative;height:300px;border-radius:18px;overflow:hidden;background:#000}
+  .bgL{position:absolute;top:0;left:0;height:100%;width:200%;display:flex}
+  .bgL img{height:100%;width:50%;object-fit:cover;display:block}
+  .bgL img:nth-child(2){transform:scaleX(-1)}
+  .scene.walking .bgL{animation:scroll 6s linear infinite}
+  @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .walker{position:absolute;bottom:10px;left:30px;display:flex;gap:2px;align-items:flex-end}
+  .walker img{height:120px;display:block;filter:drop-shadow(0 6px 4px rgba(0,0,0,.35))}
+  .walker img.dog{height:78px}
+  .scene.walking .walker img{animation:bob .45s ease-in-out infinite alternate}
+  @keyframes bob{from{transform:translateY(0)}to{transform:translateY(-7px)}}
+  .pup{position:absolute;bottom:14px;right:40px;height:84px;transition:right .9s, opacity .9s;filter:drop-shadow(0 6px 4px rgba(0,0,0,.35))}
+  .pup.flee{right:-200px;opacity:0}
+  .bossImg{position:absolute;bottom:0;right:20px;height:92%;filter:drop-shadow(0 6px 6px rgba(0,0,0,.4))}
+  .progress{display:flex;gap:4px;margin:10px 0;position:relative}
+  .progress div{flex:1;height:12px;border-radius:6px;background:var(--panel2)}
+  .progress div.done{background:var(--good)}
+  .progress div.pupstop{background:var(--pink)}
+  .progress div.pupstop.done{background:var(--good)}
+  .progress div.boss{background:var(--gold)}
+  .friendsOnTrail{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);min-height:18px}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .choices button{background:var(--panel2);box-shadow:none;font-size:20px;padding:16px}
+  .choices button.right{background:var(--good);color:#0b2d2a}
+  .choices button.wrong{background:var(--bad);color:#3a0919}
+  .passage{background:#fff8fe;color:#333;padding:12px;border-radius:10px;font-size:17px;line-height:1.5}
+  .q{font-size:22px;line-height:1.4;margin:8px 0}
+  .subject{display:inline-block;background:var(--panel2);padding:4px 10px;border-radius:20px;font-size:13px;color:var(--muted)}
+  .feedback{font-size:20px;font-weight:700;margin-top:10px;min-height:28px}
+  .dogs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+  .dogcard{background:var(--panel2);border-radius:14px;padding:10px;text-align:center}
+  .dogcard.sel{outline:4px solid var(--good)}
+  .dogcard img{height:80px;display:block;margin:0 auto}
+  .dogcard .name{font-size:19px;font-weight:700}
+  .rare{font-size:12px;color:var(--pink)}
+  .meter{height:8px;background:#1a1040;border-radius:4px;overflow:hidden;margin:6px 0}
+  .meter i{display:block;height:100%;background:linear-gradient(90deg,var(--pink),var(--good))}
+  .shelter{position:relative;border-radius:18px;overflow:hidden;height:260px;background:#000}
+  .shelter img.bg{width:100%;height:100%;object-fit:cover;display:block}
+  .shelter .yard{position:absolute;left:0;right:0;bottom:6px;display:flex;justify-content:center;align-items:flex-end;gap:0;flex-wrap:wrap}
+  .shelter .yard img{height:64px;filter:drop-shadow(0 4px 3px rgba(0,0,0,.4))}
+  .shelter .yard span{font-size:34px;line-height:1}
+  .av{position:relative;width:140px;height:260px}
+  .av img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain}
+  .av.small{width:70px;height:130px}
+  .pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pills button{background:var(--panel2);box-shadow:none;padding:8px 12px;font-size:15px}
+  .pills button.sel{background:var(--pink)}
+  .swatch{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer}
+  .swatch.sel{border-color:#fff}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .worlds{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+  .world{border-radius:16px;overflow:hidden;position:relative;height:120px;cursor:pointer;background:#000}
+  .world img{width:100%;height:100%;object-fit:cover;display:block}
+  .world span{position:absolute;left:10px;bottom:8px;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000}
+  .world.locked{opacity:.45;cursor:default}
+  .big{font-size:60px;text-align:center}
+  .prize{background:linear-gradient(135deg,#ff6fcf33,#4fa3ff33);border:2px dashed var(--pink)}
+  .board td,.board th{padding:6px 8px;text-align:left}
+  .board{width:100%;border-collapse:collapse}
+  .msgs{max-height:300px;overflow:auto;background:#1a1040;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px}
+  .msg{background:var(--panel2);padding:8px 12px;border-radius:12px;max-width:80%}
+  .msg.me{align-self:flex-end;background:var(--purple)}
+  .err{color:var(--bad);font-weight:700;min-height:22px}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--pink);color:#fff;padding:10px 18px;border-radius:30px;font-weight:700;display:none;z-index:9}
+  @media (max-width:600px){.choices{grid-template-columns:1fr}.scene{height:230px}.walker img{height:90px}.walker img.dog{height:58px}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- LOGIN -->
+<section id="login" class="screen active">
+  <img class="logo" src="assets/ui/logo.png" alt="Pup Trail">
+  <div class="card">
+    <h2>Log in</h2>
+    <p class="tag">Ask a parent for your family code. Then type your name and your 4-digit PIN.</p>
+    <div class="row"><input id="lCode" placeholder="Family code" maxlength="8" style="text-transform:uppercase"></div>
+    <div class="row" style="margin-top:8px"><input id="lName" placeholder="Your name" maxlength="20"></div>
+    <div class="row" style="margin-top:8px"><input id="lPin" placeholder="PIN" inputmode="numeric" maxlength="4" type="password"></div>
+    <div class="err" id="lErr"></div>
+    <div class="row"><button onclick="login()">Let's go!</button><a class="tag" href="parent.html" style="margin-left:auto">Parents →</a></div>
+  </div>
+</section>
+
+<!-- HUB -->
+<section id="hub" class="screen">
+  <div class="topbar">
+    <span id="hubName"></span>
+    <span class="coins">🪙 <span id="hubCoins">0</span> Pup Coins</span>
+    <span>Today: <span class="timer" id="hubTimer">20:00</span></span>
+    <span class="tag">Day <span id="hubDays">0</span>/<span id="hubSeasonLen">30</span></span>
+    <button class="small secondary" onclick="toggleMute()" id="muteBtn">🔊</button>
+  </div>
+  <div class="shelter" id="shelterView">
+    <img class="bg" id="shelterBg" src="">
+    <div class="yard" id="yard"></div>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button class="pink" onclick="showWorlds('quick')">⚡ Quick Play</button>
+    <button onclick="startCareer()">🏔️ Career <span class="tag" id="careerLvl" style="color:#fff"></span></button>
+    <button class="secondary" onclick="openAvatar()">🧍 My Look</button>
+    <button class="secondary" onclick="openShop()">🛍️ Shop</button>
+    <button class="secondary" onclick="openFriends()">👯 Friends</button>
+    <button class="secondary" onclick="openChat()">💬 Chat <span id="chatModeTag" class="tag" style="color:#fff"></span></button>
+  </div>
+  <div class="card prize" id="prizeCard" style="display:none">🏆 <b>Season Prize:</b> <span id="prizeText"></span> <span class="tag">— finish your <span id="prizeDays"></span> play-days to win it</span></div>
+  <div class="card">
+    <div class="row"><h2 style="margin:0">🏠 Your Shelter</h2><span style="flex:1"></span>
+      <select id="shelterStyle" onchange="changeShelter(this.value)"></select></div>
+    <p class="tag">Tap a dog to feed, play, or rename. Happy dogs earn bonus coins on the trail.</p>
+    <div class="dogs" id="shelterDogs"></div>
+  </div>
+</section>
+
+<!-- WORLD PICK -->
+<section id="worlds" class="screen">
+  <div class="card">
+    <h2 id="worldsTitle">Pick a trail</h2>
+    <div class="worlds" id="worldList"></div>
+    <h3>Pick your crew (up to 3)</h3>
+    <div class="dogs" id="crewPick"></div>
+    <div class="row" style="margin-top:12px"><button onclick="startTrail()" id="goBtn">Hit the trail</button><button class="secondary" onclick="goHub()">Back</button><span class="tag" id="crewNote"></span></div>
+  </div>
+</section>
+
+<!-- TRAIL -->
+<section id="trail" class="screen">
+  <div class="topbar">
+    <span id="trailWorld"></span>
+    <span>Stop <span id="stopNum">1</span>/<span id="stopTotal">10</span></span>
+    <span class="coins">🪙 <span id="trailCoins">0</span></span>
+    <span>Today: <span class="timer" id="trailTimer"></span></span>
+    <button class="small secondary" onclick="toggleMute()" id="muteBtn2">🔊</button>
+  </div>
+  <div class="scene" id="scene">
+    <div class="bgL" id="bgL"><img id="bg1"><img id="bg2"></div>
+    <div class="walker" id="walker"></div>
+    <img class="pup" id="pupSprite" style="display:none">
+    <img class="bossImg" id="bossImg" style="display:none">
+  </div>
+  <div class="progress" id="progress"></div>
+  <div class="friendsOnTrail" id="friendsOnTrail"></div>
+  <div class="card" id="eventCard">
+    <div class="row"><span class="subject" id="subject"></span><span class="tag" id="eventTitle"></span><span style="flex:1"></span><span class="tag" id="bossMeter"></span></div>
+    <div id="passage" class="passage" style="display:none"></div>
+    <div class="q" id="question"></div>
+    <div class="choices" id="choices"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="row" style="margin-top:10px">
+      <button id="nextBtn" onclick="nextStop()" style="display:none">Keep walking →</button>
+      <button id="hintBtn" class="secondary small" onclick="useHint()" style="display:none">🐑 Collie hint</button>
+      <span style="flex:1"></span>
+      <button class="secondary small" onclick="quitTrail()">Save &amp; quit</button>
+    </div>
+  </div>
+</section>
+
+<!-- TRAIL END -->
+<section id="trailEnd" class="screen">
+  <div class="big" id="endEmoji">🏕️</div>
+  <h2 style="text-align:center" id="endTitle">Trail complete!</h2>
+  <div class="card">
+    <p>Pup Coins earned: <b class="coins">🪙 <span id="endCoins"></span></b></p>
+    <p>Questions right: <b><span id="endRight"></span></b></p>
+    <p>Boss: <b><span id="endBoss"></span></b></p>
+    <p>Pups rescued: <b><span id="endPups"></span></b></p>
+    <div id="endDogs" class="dogs"></div>
+  </div>
+  <div class="row"><button onclick="goHub()">Back to shelter</button></div>
+</section>
+
+<!-- DOG DETAIL -->
+<section id="dogView" class="screen">
+  <div class="card" style="text-align:center">
+    <img id="dvImg" style="height:160px">
+    <h2 id="dvName"></h2>
+    <p class="tag" id="dvBreed"></p>
+    <p id="dvPersona"></p>
+    <p class="tag" id="dvSkill"></p>
+    <div class="meter" style="max-width:300px;margin:8px auto"><i id="dvMeter"></i></div>
+    <p class="tag">Happiness <span id="dvHappy"></span>%</p>
+    <div class="row" style="justify-content:center" id="dvCare"></div>
+    <div class="row" style="justify-content:center;margin-top:10px">
+      <input id="dvRename" maxlength="14" placeholder="New name"><button class="small" onclick="renameDog()">Rename</button>
+    </div>
+    <div class="row" style="justify-content:center;margin-top:10px"><button class="secondary" onclick="goHub()">Back</button></div>
+  </div>
+</section>
+
+<!-- AVATAR -->
+<section id="avatar" class="screen">
+  <div class="card">
+    <h2>🧍 My Look</h2>
+    <div class="grid2">
+      <div style="text-align:center"><div class="av" id="avPreview" style="margin:0 auto"></div></div>
+      <div id="avControls"></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button onclick="saveAvatar()">Save my look</button><button class="secondary" onclick="goHub()">Back</button></div>
+  </div>
+</section>
+
+<!-- SHOP -->
+<section id="shop" class="screen">
+  <div class="topbar"><span>🛍️ Shop</span><span class="coins">🪙 <span id="shopCoins">0</span></span></div>
+  <div class="card"><div class="dogs" id="shopItems"></div></div>
+  <div class="row"><button class="secondary" onclick="goHub()">Back</button></div>
+</section>
+
+<!-- FRIENDS -->
+<section id="friends" class="screen">
+  <div class="card">
+    <h2>👯 Friends</h2>
+    <p class="tag">Everyone gets the same 20 minutes a day. The season is <span id="frSeasonLen"></span> play-days, so vacations never count against you.</p>
+    <table class="board" id="board"></table>
+    <p class="tag" id="noFriends" style="display:none">No friends yet. Ask a parent to connect with another family using your family code.</p>
+  </div>
+  <div class="row"><button class="secondary" onclick="goHub()">Back</button></div>
+</section>
+
+<!-- CHAT -->
+<section id="chat" class="screen">
+  <div class="card">
+    <div class="row"><h2 style="margin:0">💬 Chat</h2><span style="flex:1"></span>
+      <div class="pills" id="chatModePills"></div></div>
+    <p class="tag" id="chatLockNote"></p>
+    <div class="row" style="margin:10px 0"><label>Talk to <select id="chatWith" onchange="loadChat()"></select></label></div>
+    <div class="msgs" id="msgs"></div>
+    <div class="row" style="margin-top:8px"><input id="msgIn" maxlength="300" placeholder="Say something nice" style="flex:1"><button class="small" onclick="sendMsg()">Send</button></div>
+    <div class="err" id="chatErr"></div>
+  </div>
+  <div class="row"><button class="secondary" onclick="goHub()">Back</button></div>
+</section>
+
+<!-- TIME'S UP -->
+<section id="timeUp" class="screen">
+  <div class="big">🌙</div>
+  <h2 style="text-align:center">That's 20 minutes for today!</h2>
+  <p style="text-align:center">Your spot is saved. The trail will be right here tomorrow.</p>
+  <p style="text-align:center"><button class="secondary" onclick="logout()">Log out</button></p>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+const {BREEDS,RARE_LABEL,WORLDS,SHELTERS,ITEMS,AVATAR,DEFAULT_AVATAR,makeQ,rollBreed,worldForLevel,R,pick,shuffle}=PT;
+const sb = supabase.createClient(PUP_CONFIG.SUPABASE_URL||'https://setup-needed.supabase.co', PUP_CONFIG.SUPABASE_ANON_KEY||'x');
+let token = localStorage.getItem('pt_token');
+let S = null;           // kid state from server
+let secondsLeft = 0;
+let muted = localStorage.getItem('pt_muted')==='1';
+
+/* ---------- helpers ---------- */
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));window.scrollTo(0,0)}
+function toast(t){const e=document.getElementById('toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',2600)}
+function fmt(s){s=Math.max(0,s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+async function rpc(fn, args){
+  const {data,error} = await sb.rpc(fn, args);
+  if(error){
+    if(/SESSION_EXPIRED/.test(error.message)){logout('You were logged in somewhere else. Log in again.');throw error}
+    if(/TIME_UP/.test(error.message)){show('timeUp');throw error}
+    throw new Error(error.message.replace(/^.*?: /,''));
+  }
+  return data;
+}
+function dogImg(d){return `assets/dogs/${d.breed}.png`}
+function breedOf(d){return BREEDS[d.breed]||BREEDS.golden}
+function crewHas(breed){return crew.some(id=>{const d=S.dogs.find(x=>x.id===id);return d&&(d.breed===breed||(breed==='golden'&&d.breed==='bear')||(breed==='labhound'&&d.breed==='lip'))})}
+function avatarHTML(av, cls=''){
+  av={...DEFAULT_AVATAR,...(av||{})};
+  const layers=['base','bottom','shoes','top','hair','acc'];
+  return `<div class="av ${cls}">`+layers.map(l=>{
+    let src;
+    if(l==='base')src=`assets/avatar/base-${av.skin}.png`;
+    else{const id=av[l];if(!id||id==='none')return '';src=`assets/avatar/${l}-${id}${l==='hair'?'-'+av.hairColor:''}.png`}
+    return `<img src="${src}" onerror="this.onerror=null;${l==='base'?"this.src='assets/ui/avatar-base.png'":"this.style.display='none'"}">`}).join('')+'</div>';
+}
+
+/* ---------- sound (synthesized, no files) ---------- */
+let AC=null; function ac(){if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();return AC}
+function beep(freq,dur,type='sine',vol=.2,when=0){if(muted)return;try{const c=ac(),o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.value=freq;g.gain.value=vol;o.connect(g);g.connect(c.destination);const t=c.currentTime+when;o.start(t);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);o.stop(t+dur)}catch(e){}}
+function bark(breed){const b=BREEDS[breed]||BREEDS.golden;const [f,d]=b.bark;if(breed==='cat'){beep(f,0.35,'sine',.18);beep(f*1.3,0.3,'sine',.12,.12);return}beep(f,d,'sawtooth',.15);beep(f*0.8,d*0.8,'square',.08,d*0.9)}
+function chime(){beep(660,.15,'triangle',.15);beep(880,.2,'triangle',.15,.12);beep(1320,.3,'triangle',.12,.24)}
+function buzz(){beep(180,.3,'sawtooth',.12)}
+let musicTimer=null;
+function music(on){
+  clearInterval(musicTimer);musicTimer=null;if(!on||muted)return;
+  const notes=[262,330,392,523,392,330,294,349,440,349,294,262];let i=0;
+  musicTimer=setInterval(()=>{beep(notes[i%notes.length],.25,'triangle',.05);if(i%4===0)beep(notes[i%notes.length]/2,.5,'sine',.04);i++},300);
+}
+function toggleMute(){muted=!muted;localStorage.setItem('pt_muted',muted?'1':'0');document.querySelectorAll('#muteBtn,#muteBtn2').forEach(b=>b.textContent=muted?'🔇':'🔊');if(muted)music(false);else if(document.getElementById('trail').classList.contains('active'))music(true)}
+document.querySelectorAll('#muteBtn,#muteBtn2').forEach(b=>b.textContent=muted?'🔇':'🔊');
+
+/* ---------- login / state ---------- */
+async function login(){
+  const code=document.getElementById('lCode').value, name=document.getElementById('lName').value, pin=document.getElementById('lPin').value;
+  const err=document.getElementById('lErr');err.textContent='';
+  try{const r=await rpc('kid_login',{p_code:code,p_name:name,p_pin:pin});token=r.token;localStorage.setItem('pt_token',token);applyState(r.state);goHub()}
+  catch(e){err.textContent=e.message}
+}
+function logout(msg){token=null;localStorage.removeItem('pt_token');S=null;music(false);show('login');if(msg)document.getElementById('lErr').textContent=msg}
+function applyState(st){S=st;secondsLeft=st.seconds_left;if(!S.avatar||!Object.keys(S.avatar).length)S.avatar={...DEFAULT_AVATAR}}
+async function refresh(){applyState(await rpc('kid_state',{p_token:token}))}
+
+/* ---------- daily timer: local countdown, server tick every 30 s ---------- */
+let localAcc=0;
+setInterval(async()=>{
+  if(!token||!S)return;
+  const active=document.querySelector('.screen.active').id;
+  if(active==='login'||active==='timeUp')return;
+  secondsLeft--;localAcc++;
+  document.querySelectorAll('.timer').forEach(el=>{el.textContent=fmt(secondsLeft);el.classList.toggle('low',secondsLeft<120)});
+  if(localAcc>=30){const n=localAcc;localAcc=0;try{secondsLeft=await rpc('tick',{p_token:token,p_seconds:n})}catch(e){}}
+  if(secondsLeft<=0){try{await rpc('tick',{p_token:token,p_seconds:localAcc})}catch(e){}localAcc=0;if(T&&T.runId)quitTrail(true);music(false);show('timeUp')}
+},1000);
+
+/* ---------- hub ---------- */
+let crew=[];
+async function goHub(){
+  if(!token){show('login');return}
+  try{await refresh()}catch(e){return}
+  if(secondsLeft<=0){show('timeUp');return}
+  music(false);show('hub');
+  document.getElementById('hubName').innerHTML=avatarHTML(S.avatar,'small')+' '+esc(S.name);
+  document.querySelector('#hubName .av').style.cssText='width:34px;height:60px;display:inline-block;vertical-align:middle';
+  document.getElementById('hubCoins').textContent=S.coins;
+  document.getElementById('hubDays').textContent=S.days_played;document.getElementById('hubSeasonLen').textContent=S.season_length;
+  document.getElementById('careerLvl').textContent='Lv '+S.career_level;
+  document.getElementById('chatModeTag').textContent={play:'(play only)',text:'(text)',voice:'(voice+text)'}[S.chat_mode]||'';
+  const pc=document.getElementById('prizeCard');pc.style.display=S.season_prize?'':'none';document.getElementById('prizeText').textContent=S.season_prize||'';document.getElementById('prizeDays').textContent=S.season_length;
+  const ss=document.getElementById('shelterStyle');ss.innerHTML=Object.entries(SHELTERS).map(([k,v])=>`<option value="${k}" ${k===S.shelter_style?'selected':''}>${v}</option>`).join('');
+  document.getElementById('shelterBg').src=`assets/shelters/${S.shelter_style}.jpg`;
+  const yard=document.getElementById('yard');
+  yard.innerHTML=S.dogs.slice(0,8).map(d=>`<img src="${dogImg(d)}" title="${esc(d.name)}" onclick="openDog('${d.id}')" style="cursor:pointer">`).join('')+
+    ['bowl','leash','bed'].filter(i=>(S.inventory||{})[i]).map(i=>`<span title="${ITEMS.find(x=>x.id===i).name}">${ITEMS.find(x=>x.id===i).emoji}</span>`).join('');
+  document.getElementById('shelterDogs').innerHTML=S.dogs.map(d=>{const b=breedOf(d);return `<div class="dogcard" onclick="openDog('${d.id}')" style="cursor:pointer"><img src="${dogImg(d)}"><div class="name">${d.happiness<40?'😢 ':''}${esc(d.name)}</div><div class="tag">${b.name} · <span class="rare">${RARE_LABEL[b.rare]}</span></div><div class="meter"><i style="width:${d.happiness}%"></i></div></div>`}).join('');
+}
+async function changeShelter(v){try{await rpc('set_shelter',{p_token:token,p_style:v});S.shelter_style=v;document.getElementById('shelterBg').src=`assets/shelters/${v}.jpg`}catch(e){toast(e.message)}}
+
+/* ---------- dog detail ---------- */
+let dvId=null;
+function openDog(id){
+  const d=S.dogs.find(x=>x.id===id);if(!d)return;dvId=id;const b=breedOf(d);
+  document.getElementById('dvImg').src=dogImg(d);document.getElementById('dvName').textContent=d.name;
+  document.getElementById('dvBreed').textContent=b.name+' · '+RARE_LABEL[b.rare];
+  document.getElementById('dvPersona').textContent='"'+d.persona+'"';
+  document.getElementById('dvSkill').textContent='✨ '+b.skill+': '+b.skillText;
+  document.getElementById('dvMeter').style.width=d.happiness+'%';document.getElementById('dvHappy').textContent=d.happiness;
+  document.getElementById('dvRename').value='';
+  const inv=S.inventory||{};
+  document.getElementById('dvCare').innerHTML=ITEMS.filter(i=>i.care).map(i=>`<button class="small ${inv[i.id]?'':'secondary'}" ${inv[i.id]?'':'disabled'} onclick="careDog('${i.id}')">${i.emoji} ${i.name} (${inv[i.id]||0})</button>`).join('')||'';
+  bark(d.breed);show('dogView');
+}
+async function careDog(item){try{applyState(await rpc('care_dog',{p_token:token,p_dog:dvId,p_item:item}));chime();openDog(dvId);toast('Happy dog!')}catch(e){toast(e.message)}}
+async function renameDog(){const n=document.getElementById('dvRename').value.trim();if(!n)return;try{await rpc('rename_dog',{p_token:token,p_dog:dvId,p_name:n});S.dogs.find(x=>x.id===dvId).name=n;openDog(dvId);toast('Renamed!')}catch(e){toast(e.message)}}
+
+/* ---------- worlds / crew ---------- */
+let pendingMode='quick', pendingWorld='forest', pendingLevel=null;
+function showWorlds(mode, level){
+  pendingMode=mode;pendingLevel=level||null;
+  document.getElementById('worldsTitle').textContent=mode==='career'?`Career · Level ${level} · ${WORLDS[worldForLevel(level)].name}`:'Pick a trail';
+  const unlocked=w=>mode==='career'?w===worldForLevel(level):S.career_level>=WORLDS[w].minLevel;
+  if(mode==='career')pendingWorld=worldForLevel(level);else if(!unlocked(pendingWorld))pendingWorld='forest';
+  document.getElementById('worldList').innerHTML=Object.entries(WORLDS).map(([k,w])=>`<div class="world ${unlocked(k)?'':'locked'} ${k===pendingWorld?'sel':''}" style="${k===pendingWorld?'outline:4px solid var(--pink)':''}" onclick="${unlocked(k)?`pickWorld('${k}')`:''}"><img src="assets/worlds/${k}.jpg"><span>${w.emoji} ${w.name}${unlocked(k)?'':' 🔒 Lv '+w.minLevel}</span></div>`).join('');
+  renderCrew();show('worlds');
+}
+function pickWorld(k){pendingWorld=k;showWorlds(pendingMode,pendingLevel)}
+function renderCrew(){
+  crew=crew.filter(id=>S.dogs.some(d=>d.id===id));
+  document.getElementById('crewPick').innerHTML=S.dogs.map(d=>{const b=breedOf(d);return `<div class="dogcard ${crew.includes(d.id)?'sel':''}" onclick="toggleCrew('${d.id}')" style="cursor:pointer"><img src="${dogImg(d)}"><div class="name">${esc(d.name)}</div><div class="tag">✨ ${b.skill}</div></div>`}).join('');
+  document.getElementById('crewNote').textContent=crew.length?`Crew: ${crew.map(id=>S.dogs.find(d=>d.id===id).name).join(', ')}`:'Pick a crew!';
+}
+function toggleCrew(id){if(crew.includes(id))crew=crew.filter(x=>x!==id);else if(crew.length<3)crew.push(id);else toast('Only 3 dogs on a trail');renderCrew()}
+function startCareer(){
+  if(S.career_level>50){toast('You finished the whole career! 🏆');return}
+  showWorlds('career',S.career_level);
+}
+
+/* ---------- trail ---------- */
+let T=null, usedQ=new Set(), friendPoll=null;
+async function startTrail(){
+  if(!crew.length){toast('Pick at least one dog for your crew');return}
+  const world=pendingWorld, mode=pendingMode, level=pendingLevel;
+  const stops=mode==='career'?10+Math.floor((level-1)/10)*2:10;
+  // resume career save?
+  let saved=null;
+  if(mode==='career'&&S.career_state&&S.career_state.level===level&&S.career_state.world===world)saved=S.career_state;
+  let runId;try{runId=await rpc('start_trail',{p_token:token,p_world:world,p_mode:mode,p_level:level,p_stops:stops})}catch(e){toast(e.message);return}
+  usedQ=new Set();
+  if(saved){T={...saved,runId,i:saved.i};T.events.forEach(e=>usedQ.add(e.q))}
+  else{
+    const pupStops=new Set([R(2,4),R(6,stops-1)]);if(crewHas('beagle'))pupStops.add(R(5,stops-2));
+    const events=[];
+    for(let i=1;i<=stops;i++){const ev=makeQ(S.grade,world,usedQ);if(pupStops.has(i)){ev.pup=rollBreed();ev.t='A pup is hiding here!'}events.push(ev)}
+    const bossQs=(crewHas('chihuahua')?4:5);
+    const boss=[];for(let i=0;i<bossQs;i++)boss.push(makeQ(S.grade,world,usedQ));
+    T={runId,world,mode,level,events,boss,bossI:0,bossRight:0,bossWrong:0,i:0,coins:0,right:0,found:[],escaped:[],
+       cheerUsed:!crewHas('golden'),hintUsed:!crewHas('collie'),rescueUsed:!crewHas('saintbernard'),inBoss:false,
+       crewBreeds:crew.map(id=>S.dogs.find(d=>d.id===id).breed)};
+    if(crewHas('toller')){T.coins+=20}
+  }
+  show('trail');music(true);
+  document.getElementById('trailWorld').textContent=WORLDS[world].emoji+' '+WORLDS[world].name+(mode==='career'?` · Lv ${level}`:'');
+  document.getElementById('bg1').src=document.getElementById('bg2').src=`assets/worlds/${world}.jpg`;
+  document.getElementById('walker').innerHTML=avatarHTML(S.avatar).replace('class="av "','class="av" style="width:70px;height:120px;position:relative"')+crew.map(id=>{const d=S.dogs.find(x=>x.id===id);return `<img class="dog" src="${dogImg(d)}">`}).join('');
+  document.getElementById('bossImg').style.display='none';
+  clearInterval(friendPoll);friendPoll=setInterval(pollFriendsOnTrail,15000);pollFriendsOnTrail();
+  const happyBonus=S.dogs.filter(d=>crew.includes(d.id)&&d.happiness>=80).length;
+  if(happyBonus&&!saved){T.coins+=5*happyBonus;toast(`Happy crew bonus +${5*happyBonus} 🪙`)}
+  walkTo(T.i);
+}
+function walkTo(i){
+  T.i=i;T.inBoss=false;
+  const sc=document.getElementById('scene');sc.classList.add('walking');
+  document.getElementById('eventCard').style.opacity=.3;
+  const ps=document.getElementById('pupSprite');ps.style.display='none';ps.classList.remove('flee');
+  renderProgress();
+  rpc('trail_progress',{p_token:token,p_run:T.runId,p_stop:i}).catch(()=>{});
+  if(T.mode==='career')saveCareer();
+  setTimeout(()=>{sc.classList.remove('walking');showEvent()},1600);
+}
+function saveCareer(){const st={...T,runId:undefined};rpc('save_career_state',{p_token:token,p_level:T.level,p_state:st}).catch(()=>{})}
+function renderProgress(){
+  const p=document.getElementById('progress');p.innerHTML='';
+  const seeAhead=crewHas('greatdane')?2:0, seePups=crewHas('dachshund');
+  T.events.forEach((e,k)=>{const d=document.createElement('div');if(e.pup&&(seePups||k<=T.i+seeAhead||k<T.i))d.className='pupstop';if(k<T.i||(k===T.i&&T.inBoss))d.classList.add('done');p.appendChild(d)});
+  const b=document.createElement('div');b.className='boss';b.title='Boss';p.appendChild(b);
+  document.getElementById('stopNum').textContent=Math.min(T.i+1,T.events.length);document.getElementById('stopTotal').textContent=T.events.length;
+  document.getElementById('trailCoins').textContent=S.coins+T.coins;
+}
+function showEvent(){
+  const ev=T.events[T.i];
+  document.getElementById('eventCard').style.opacity=1;
+  document.getElementById('subject').textContent=ev.s;document.getElementById('eventTitle').textContent=ev.t;document.getElementById('bossMeter').textContent='';
+  const pa=document.getElementById('passage');pa.style.display=ev.p?'':'none';pa.textContent=ev.p||'';
+  let lead='';
+  if(ev.pup){const b=BREEDS[ev.pup];lead=`A ${b.name} peeks out from behind a tree! Get this right and it'll trust you. `;const ps=document.getElementById('pupSprite');ps.src=`assets/dogs/${ev.pup}.png`;ps.style.display='';bark(ev.pup)}
+  document.getElementById('question').textContent=lead+ev.q;
+  document.getElementById('feedback').textContent='';
+  document.getElementById('nextBtn').style.display='none';
+  document.getElementById('hintBtn').style.display=(!T.hintUsed)?'':'none';
+  renderChoices(ev,(c,b)=>answer(ev,c,b));
+}
+function renderChoices(ev,fn){const ch=document.getElementById('choices');ch.innerHTML='';ev.choices.forEach(c=>{const b=document.createElement('button');b.textContent=c;b.onclick=()=>fn(c,b);ch.appendChild(b)})}
+function useHint(){
+  const ev=T.inBoss?T.boss[T.bossI]:T.events[T.i];T.hintUsed=!crewHas('cat')||T.hintUsed2;if(crewHas('cat')&&!T.hintUsed2)T.hintUsed2=true;
+  document.getElementById('hintBtn').style.display=T.hintUsed?'none':'';
+  const wrong=[...document.getElementById('choices').children].filter(b=>!b.disabled&&String(b.textContent)!==String(ev.a));
+  if(wrong.length){const b=pick(wrong);b.disabled=true;b.textContent='🐑 nope'}
+}
+function markRight(ev){[...document.getElementById('choices').children].forEach(b=>{b.disabled=true;if(String(b.textContent)===String(ev.a))b.classList.add('right')})}
+function answer(ev,c,btn){
+  const ok=String(c)===String(ev.a), fb=document.getElementById('feedback');
+  if(ok){
+    markRight(ev);chime();
+    let earn=10+(crewHas('labhound')?5:0)+((T.world==='iceland'&&crewHas('husky'))?10:0);T.coins+=earn;T.right++;
+    fb.textContent=`✅ Nice! +${earn} Pup Coins`;
+    if(ev.pup){
+      const b=BREEDS[ev.pup];const dog={id:'new'+Math.random().toString(36).slice(2,7),breed:ev.pup,name:pick(b.names),persona:pick(b.persona)};
+      T.found.push(dog);bark(ev.pup);
+      fb.textContent+=` and ${dog.name} the ${b.name} joins your crew! "${dog.persona}"`;
+    }
+    document.getElementById('nextBtn').style.display='';document.getElementById('hintBtn').style.display='none';
+    document.getElementById('trailCoins').textContent=S.coins+T.coins;return;
+  }
+  btn.classList.add('wrong');btn.disabled=true;buzz();
+  if(ev.pup&&!T.cheerUsed){T.cheerUsed=true;fb.textContent='❌ Not quite... but your Golden Retriever cheers the pup up. One more try!';return}
+  if(ev.pup){
+    const b=BREEDS[ev.pup];document.getElementById('pupSprite').classList.add('flee');
+    [...document.getElementById('choices').children].forEach(x=>x.disabled=true);
+    const again=!T.escaped.includes(ev.pup)||crewHas('germanshepherd');
+    if(again){T.escaped.push(ev.pup);const gap=crewHas('heeler')?R(1,2):R(2,3);const at=Math.min(T.events.length,T.i+gap);
+      T.events.splice(at,0,{...makeQ(S.grade,T.world,usedQ),pup:ev.pup,t:'The pup is back!'});
+      fb.textContent=`❌ The ${b.name} got scared and ran off! Keep your eyes open, it might come back.`}
+    else fb.textContent=`❌ The ${b.name} ran off for good this time. Maybe next trail.`;
+    renderProgress();document.getElementById('nextBtn').style.display='';return;
+  }
+  fb.textContent=crewHas('bernese')?'❌ Not that one. Your Bernese shrugs it off. Try again!':'❌ Not that one. Try again!';
+}
+function nextStop(){
+  if(T.i+1>=T.events.length){startBoss();return}
+  walkTo(T.i+1);
+}
+/* ---------- boss ---------- */
+function startBoss(){
+  T.inBoss=true;T.i=T.events.length-1;renderProgress();
+  const w=WORLDS[T.world];
+  document.getElementById('pupSprite').style.display='none';
+  const bi=document.getElementById('bossImg');bi.src=`assets/bosses/${w.boss}.png`;bi.style.display='';
+  beep(120,.6,'sawtooth',.2);beep(90,.8,'sawtooth',.2,.3);
+  showBossQ(`${w.bossName} blocks the path! Answer ${T.boss.length} quick ones. Get at least ${Math.ceil(T.boss.length*0.6)} right to win.`);
+}
+function showBossQ(intro){
+  const ev=T.boss[T.bossI];
+  document.getElementById('subject').textContent=ev.s;document.getElementById('eventTitle').textContent='BOSS · '+WORLDS[T.world].bossName;
+  document.getElementById('bossMeter').textContent=`${T.bossI+1}/${T.boss.length} · ✅${T.bossRight} ❌${T.bossWrong}`;
+  const pa=document.getElementById('passage');pa.style.display=ev.p?'':'none';pa.textContent=ev.p||'';
+  document.getElementById('question').textContent=(intro?intro+' ':'')+ev.q;
+  document.getElementById('feedback').textContent='';document.getElementById('nextBtn').style.display='none';
+  document.getElementById('hintBtn').style.display=(!T.hintUsed)?'':'none';
+  renderChoices(ev,(c,btn)=>{
+    const ok=String(c)===String(ev.a);
+    if(ok){markRight(ev);chime();T.bossRight++;T.coins+=15;T.right++}
+    else if(!T.rescueUsed){T.rescueUsed=true;btn.classList.add('wrong');btn.disabled=true;buzz();document.getElementById('feedback').textContent='❌ Your Saint Bernard pulls you back. One more try!';return}
+    else{btn.classList.add('wrong');btn.disabled=true;buzz();T.bossWrong++;[...document.getElementById('choices').children].forEach(x=>x.disabled=true)}
+    T.bossI++;
+    setTimeout(()=>{if(T.bossI<T.boss.length)showBossQ('');else endTrail()},700);
+  });
+}
+async function endTrail(){
+  clearInterval(friendPoll);music(false);
+  const need=Math.ceil(T.boss.length*0.6), won=T.bossRight>=need;
+  if(won){T.coins+=30+(crewHas('boxer')?10:0)}
+  if(crewHas('corgi'))T.coins+=15;
+  const careerNext=T.mode==='career'&&won?T.level+1:null;
+  let st;
+  try{st=await rpc('finish_trail',{p_token:token,p_run:T.runId,p_coins:T.coins,p_correct:T.right,p_total:T.events.length+T.boss.length,p_dogs:T.found.map(d=>({breed:d.breed,name:d.name,persona:d.persona})),p_career_level:careerNext,p_career_state:null})}
+  catch(e){toast(e.message);return}
+  applyState(st);
+  if(crewHas('pitbull'))toast('Pit Bull big heart: shelter dogs feel +10 happier');
+  show('trailEnd');
+  document.getElementById('endEmoji').textContent=won?'🏆':'🏕️';
+  document.getElementById('endTitle').textContent=won?(T.mode==='career'?`Level ${T.level} complete!`:'Trail complete!'):'The boss got away this time';
+  document.getElementById('endCoins').textContent=T.coins;
+  document.getElementById('endRight').textContent=`${T.right} / ${T.events.length+T.boss.length}`;
+  document.getElementById('endBoss').textContent=won?`Beat ${WORLDS[T.world].bossName} (${T.bossRight}/${T.boss.length})`:`Not this time (${T.bossRight}/${T.boss.length}). Try the level again!`;
+  document.getElementById('endPups').textContent=T.found.length;
+  document.getElementById('endDogs').innerHTML=T.found.map(d=>{const b=BREEDS[d.breed];return `<div class="dogcard"><img src="assets/dogs/${d.breed}.png"><div class="name">${esc(d.name)}</div><div class="tag">${b.name} · <span class="rare">${RARE_LABEL[b.rare]}</span></div><div class="tag">"${esc(d.persona)}"</div></div>`}).join('');
+  T=null;
+}
+async function quitTrail(silent){
+  clearInterval(friendPoll);music(false);
+  if(T&&T.mode==='career'){saveCareer();if(!silent)toast('Saved. Pick up where you left off next time.')}
+  else if(T&&!silent)toast('Quick Play trails do not save. Coins from this trail were not kept.');
+  T=null;if(!silent)goHub();
+}
+async function pollFriendsOnTrail(){
+  try{const fr=await rpc('friends_board',{p_token:token});
+    const here=fr.filter(f=>f.today_run&&f.today_run.world===(T&&T.world));
+    document.getElementById('friendsOnTrail').innerHTML=here.map(f=>`<span>${f.today_run.done?'🏁':'🏃'} ${esc(f.name)}: stop ${f.today_run.stop+1}/${f.today_run.stops}</span>`).join('')||(fr.length?'<span>No friends on this trail today yet</span>':'');
+  }catch(e){}
+}
+
+/* ---------- avatar ---------- */
+let avDraft=null;
+function openAvatar(){avDraft={...DEFAULT_AVATAR,...S.avatar};renderAvatar();show('avatar')}
+function renderAvatar(){
+  document.getElementById('avPreview').outerHTML=avatarHTML(avDraft).replace('class="av "','class="av" id="avPreview"');
+  const c=document.getElementById('avControls');c.innerHTML='';
+  const sec=(label,inner)=>`<div style="margin-bottom:10px"><div class="tag">${label}</div>${inner}</div>`;
+  c.innerHTML+=sec('Skin',`<div class="row">${AVATAR.skin.map(s=>`<div class="swatch ${avDraft.skin===s.id?'sel':''}" style="background:${s.c}" title="${s.name}" onclick="setAv('skin','${s.id}')"></div>`).join('')}</div>`);
+  c.innerHTML+=sec('Hair color',`<div class="row">${AVATAR.hairColor.map(s=>`<div class="swatch ${avDraft.hairColor===s.id?'sel':''}" style="background:${s.c}" title="${s.name}" onclick="setAv('hairColor','${s.id}')"></div>`).join('')}</div>`);
+  for(const [layer,label] of [['hair','Hair'],['top','Top'],['bottom','Bottom'],['shoes','Shoes'],['acc','Accessory']]){
+    c.innerHTML+=sec(label,`<div class="pills">${AVATAR[layer].map(o=>`<button class="${avDraft[layer]===o.id?'sel':''}" onclick="setAv('${layer}','${o.id}')">${o.name}</button>`).join('')}</div>`);
+  }
+}
+function setAv(k,v){avDraft[k]=v;if(k==='top'&&v==='dress')avDraft.bottom='none';if(k==='bottom'&&v!=='none'&&avDraft.top==='dress')avDraft.top='hoodie';renderAvatar()}
+async function saveAvatar(){try{await rpc('save_avatar',{p_token:token,p_avatar:avDraft});S.avatar={...avDraft};toast('Looking good!');goHub()}catch(e){toast(e.message)}}
+
+/* ---------- shop ---------- */
+function openShop(){
+  document.getElementById('shopCoins').textContent=S.coins;const inv=S.inventory||{};
+  document.getElementById('shopItems').innerHTML=ITEMS.map(i=>`<div class="dogcard"><div style="font-size:44px">${i.emoji}</div><div class="name">${i.name}</div><div class="tag">${i.text}</div><div class="tag">You have ${inv[i.id]||0}</div><div style="margin-top:8px"><button class="small ${S.coins>=i.price?'':'secondary'}" onclick="buy('${i.id}',${i.price})">🪙 ${i.price}</button></div></div>`).join('');
+  show('shop');
+}
+async function buy(id,price){try{applyState(await rpc('buy_item',{p_token:token,p_item:id,p_price:price}));chime();toast('Bought!');openShop()}catch(e){toast(e.message)}}
+
+/* ---------- friends ---------- */
+async function openFriends(){
+  show('friends');document.getElementById('frSeasonLen').textContent=S.season_length;
+  let fr=[];try{fr=await rpc('friends_board',{p_token:token})}catch(e){toast(e.message)}
+  const me={id:S.id,name:S.name+' (you)',avatar:S.avatar,coins:S.coins,career_level:S.career_level,days_played:S.days_played,dogs:S.dogs.length};
+  const all=[me,...fr].sort((a,b)=>b.coins-a.coins);
+  document.getElementById('noFriends').style.display=fr.length?'none':'';
+  document.getElementById('board').innerHTML=`<tr><th></th><th>Trail buddy</th><th>🪙</th><th>Level</th><th>Dogs</th><th>Days</th><th>Today</th></tr>`+all.map((f,i)=>`<tr><td>${['🥇','🥈','🥉'][i]||i+1}</td><td>${avatarHTML(f.avatar,'small').replace('class="av small"','class="av small" style="width:28px;height:50px;display:inline-block;vertical-align:middle"')} ${esc(f.name)}</td><td>${f.coins}</td><td>${f.career_level}</td><td>${f.dogs}</td><td>${f.days_played}/${S.season_length}</td><td>${f.today_run?(f.today_run.done?'🏁 '+WORLDS[f.today_run.world].emoji:'🏃 '+WORLDS[f.today_run.world].emoji+' '+(f.today_run.stop+1)+'/'+f.today_run.stops):''}</td></tr>`).join('');
+}
+
+/* ---------- chat ---------- */
+let chatPoll=null, lastMsgId=0, chatFriends=[];
+async function openChat(){
+  show('chat');renderChatMode();
+  try{chatFriends=await rpc('friends_board',{p_token:token})}catch(e){chatFriends=[]}
+  const sel=document.getElementById('chatWith');sel.innerHTML=chatFriends.map(f=>`<option value="${f.id}">${esc(f.name)}${f.chat_mode==='play'?' (play only right now)':''}</option>`).join('')||'<option value="">No friends yet</option>';
+  loadChat();clearInterval(chatPoll);chatPoll=setInterval(()=>{if(document.getElementById('chat').classList.contains('active'))loadChat(true);else clearInterval(chatPoll)},5000);
+}
+function renderChatMode(){
+  const modes=[['play','🎮 Play only'],['text','💬 Text'],['voice','🎙️ Voice + text']];
+  document.getElementById('chatModePills').innerHTML=modes.map(([k,l])=>`<button class="${S.chat_mode===k?'sel':''}" onclick="setChatMode('${k}')">${l}</button>`).join('');
+  document.getElementById('chatLockNote').textContent=S.chat_locked?'🔒 A parent set this for you.':(S.chat_mode==='voice'?'Voice chat is coming soon. Text works now.':S.chat_mode==='play'?'Chat is off. Switch to Text to talk with friends.':'');
+  document.getElementById('msgIn').disabled=S.chat_mode==='play';
+}
+async function setChatMode(m){try{await rpc('set_chat_mode',{p_token:token,p_mode:m});S.chat_mode=m;renderChatMode();goHubLater()}catch(e){toast(e.message)}}
+function goHubLater(){document.getElementById('chatModeTag').textContent={play:'(play only)',text:'(text)',voice:'(voice+text)'}[S.chat_mode]}
+async function loadChat(incremental){
+  const w=document.getElementById('chatWith').value;if(!w){document.getElementById('msgs').innerHTML='';return}
+  if(!incremental){lastMsgId=0;document.getElementById('msgs').innerHTML=''}
+  try{const ms=await rpc('get_messages',{p_token:token,p_with:w,p_after:lastMsgId});
+    const box=document.getElementById('msgs');ms.forEach(m=>{lastMsgId=Math.max(lastMsgId,m.id);const d=document.createElement('div');d.className='msg'+(m.from===S.id?' me':'');d.textContent=m.body;box.appendChild(d)});
+    if(ms.length)box.scrollTop=box.scrollHeight}catch(e){}
+}
+async function sendMsg(){
+  const w=document.getElementById('chatWith').value,b=document.getElementById('msgIn').value.trim();const err=document.getElementById('chatErr');err.textContent='';
+  if(!w||!b)return;
+  try{await rpc('send_message',{p_token:token,p_to:w,p_body:b});document.getElementById('msgIn').value='';loadChat(true)}catch(e){err.textContent=e.message}
+}
+document.getElementById('msgIn').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg()});
+document.getElementById('lPin').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+
+/* ---------- boot ---------- */
+if(!PUP_CONFIG.SUPABASE_URL){document.getElementById('lErr').textContent='Setup needed: add the Supabase URL and key to config.js.'}
+else if(token){goHub()}
+</script>
+</body>
+</html>
