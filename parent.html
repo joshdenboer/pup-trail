@@ -67,6 +67,24 @@
         <div class="err" id="kidErr"></div>
       </div>
 
+      <div class="card" id="petsCard">
+        <h2>🐶 Family pets</h2>
+        <p class="tag">Describe your real pets and the game draws them in its own art style. Every kid in the family starts with them in their shelter, with the names you give. Families with no pets listed start with Bear and Lip instead.</p>
+        <div id="petList"></div>
+        <h3>Add a pet</h3>
+        <div class="row"><input id="petName" placeholder="Name" maxlength="14">
+          <select id="petKind"><option value="dog">Dog</option><option value="cat">Cat</option><option value="other">Other</option></select></div>
+        <div class="row" style="margin-top:8px"><input id="petDesc" placeholder="What it looks like: golden retriever, white spot on chest, floppy ears" maxlength="200" style="flex:1;min-width:280px"></div>
+        <div class="row" style="margin-top:8px"><input id="petPersona" placeholder="Personality (optional): steals socks, loves the pool" maxlength="120" style="flex:1;min-width:280px"></div>
+        <div class="row" style="margin-top:10px"><button onclick="drawPet()" id="drawBtn">🎨 Draw it</button><span class="tag" id="petStatus"></span></div>
+        <div class="err" id="petErr"></div>
+        <div id="petPreview" class="hide" style="margin-top:12px;background:var(--panel2);border-radius:14px;padding:12px;display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+          <img id="petImg" style="height:160px">
+          <div><p style="margin:0 0 10px">Does this look like <b id="petPreviewName"></b>?</p>
+            <div class="row"><button onclick="savePet()" id="savePetBtn">✅ Add to family</button><button class="secondary" onclick="drawPet()">🔁 Draw again</button><button class="secondary" onclick="$('petPreview').classList.add('hide')">Cancel</button></div></div>
+        </div>
+      </div>
+
       <div class="card">
         <h2>Friend families</h2>
         <p class="tag">Invites go parent to parent. Enter another family's code; their parent then approves it on their dashboard. Once approved, the kids in both families can see each other, race, and chat.</p>
@@ -138,7 +156,7 @@ async function load(){
   $('noFamily').classList.add('hide');$('family').classList.remove('hide');
   $('famTitle').textContent=fam.name;$('famCode').textContent=fam.invite_code;$('prize').value=fam.season_prize||'';
   const {data:k}=await sb.from('kids').select('*').order('created_at');kids=k||[];
-  renderKids();await loadLinks();await loadActivity();await loadChat();renderChecklist();
+  renderKids();await loadPets();await loadLinks();await loadActivity();await loadChat();renderChecklist();
 }
 async function createFamily(){
   $('famErr').textContent='';
@@ -179,6 +197,41 @@ async function loadLinks(){
 async function requestFriend(){$('friendErr').textContent='';try{await rpc('request_friend',{p_code:$('friendCode').value});$('friendCode').value='';await loadLinks()}catch(e){$('friendErr').textContent=e.message}}
 async function respond(id,ok){try{await rpc('respond_friend',{p_link:id,p_approve:ok});await loadLinks();renderChecklist()}catch(e){alert(e.message)}}
 
+
+/* ---------- family pets ---------- */
+let pets=[], petDraft=null;
+async function loadPets(){
+  const {data}=await sb.from('family_pets').select('*').order('created_at');pets=data||[];
+  $('petList').innerHTML=pets.length?'<div class="row">'+pets.map(p=>`<div style="background:var(--panel2);border-radius:12px;padding:8px;text-align:center;width:150px"><img src="${p.image_url}" style="height:90px"><div><b>${esc(p.name)}</b></div><div class="tag">${p.kind}</div><button class="small secondary" style="margin-top:6px" onclick="removePet('${p.id}')">Remove</button></div>`).join('')+'</div>':'<p class="tag">No pets added yet.</p>';
+}
+async function drawPet(){
+  $('petErr').textContent='';const name=$('petName').value.trim(),kind=$('petKind').value,description=$('petDesc').value.trim();
+  if(!name||!description){$('petErr').textContent='Give the pet a name and describe what it looks like.';return}
+  const {data:{session}}=await sb.auth.getSession();
+  $('drawBtn').disabled=true;$('petStatus').textContent='Drawing… this takes about 20 seconds';
+  try{
+    const r=await fetch('/.netlify/functions/draw-pet',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({name,kind,description})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||'Drawing failed');
+    petDraft={name,kind,description,persona:$('petPersona').value.trim(),b64:d.b64};
+    $('petImg').src='data:image/png;base64,'+d.b64;$('petPreviewName').textContent=name;$('petPreview').classList.remove('hide');$('petStatus').textContent='';
+  }catch(e){$('petErr').textContent=e.message;$('petStatus').textContent=''}
+  $('drawBtn').disabled=false;
+}
+function shrinkPng(b64,size){return new Promise(res=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=size;const x=c.getContext('2d');const s=Math.min(size/im.width,size/im.height);const w=im.width*s,h=im.height*s;x.drawImage(im,(size-w)/2,(size-h)/2,w,h);c.toBlob(res,'image/png')};im.src='data:image/png;base64,'+b64})}
+async function savePet(){
+  if(!petDraft)return;$('savePetBtn').disabled=true;$('petErr').textContent='';
+  try{
+    const blob=await shrinkPng(petDraft.b64,512);
+    const path=`${fam.id}/${crypto.randomUUID()}.png`;
+    const {error:upErr}=await sb.storage.from('pets').upload(path,blob,{contentType:'image/png',upsert:false});if(upErr)throw upErr;
+    const url=sb.storage.from('pets').getPublicUrl(path).data.publicUrl;
+    await rpc('add_family_pet',{p_name:petDraft.name,p_kind:petDraft.kind,p_breed_text:petDraft.description,p_persona:petDraft.persona||null,p_image_url:url});
+    petDraft=null;$('petPreview').classList.add('hide');$('petName').value='';$('petDesc').value='';$('petPersona').value='';
+    await loadPets();renderChecklist();alert('Added! Every kid in the family now has this pet in their shelter.');
+  }catch(e){$('petErr').textContent=e.message}
+  $('savePetBtn').disabled=false;
+}
+async function removePet(id){if(!confirm('Remove this pet from the family list? Kids who already have it keep it.'))return;try{await rpc('remove_family_pet',{p_pet:id});await loadPets()}catch(e){alert(e.message)}}
 async function loadActivity(){
   const since=new Date(Date.now()-14*864e5).toISOString().slice(0,10);
   const {data:pd}=await sb.from('play_days').select('*').gte('day',since).order('day',{ascending:false});
@@ -189,8 +242,8 @@ async function loadActivity(){
 }
 
 function renderChecklist(){
-  const items=[['Parent account',true],['Family created',!!fam],['At least one kid added',kids.length>0],['Season prize set',!!(fam&&fam.season_prize)],['A friend family connected',links.some(l=>l.status==='approved')]];
-  $('checklist').innerHTML=items.map(([t,ok])=>`<div>${ok?'✅':'⬜'} ${t}${!ok&&t.startsWith('A friend')?' <span class="tag">(optional, do this when another family is ready)</span>':''}${!ok&&t.startsWith('Season')?' <span class="tag">(optional)</span>':''}</div>`).join('');
+  const items=[['Parent account',true],['Family created',!!fam],['At least one kid added',kids.length>0],['Family pets drawn',pets.length>0],['Season prize set',!!(fam&&fam.season_prize)],['A friend family connected',links.some(l=>l.status==='approved')]];
+  $('checklist').innerHTML=items.map(([t,ok])=>`<div>${ok?'✅':'⬜'} ${t}${!ok&&t.startsWith('A friend')?' <span class="tag">(optional, do this when another family is ready)</span>':''}${!ok&&(t.startsWith('Season')||t.startsWith('Family pets'))?' <span class="tag">(optional)</span>':''}</div>`).join('');
   $('doneCode').textContent=fam?fam.invite_code:'';
 }
 function copyCode(){navigator.clipboard.writeText(fam.invite_code).then(()=>alert('Copied: '+fam.invite_code))}

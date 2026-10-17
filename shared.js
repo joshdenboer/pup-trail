@@ -1,6 +1,9 @@
 /* Pup Trail shared data: breeds, worlds, items, avatar pieces, questions */
 window.PT = (function(){
 const BREEDS = {
+  pet_dog:{name:'Family Dog', rare:-1, skill:'Best Friend', skillText:'+5 bonus coins on every right answer.', bark:[300,0.2]},
+  pet_cat:{name:'Family Cat', rare:-1, skill:'Curious', skillText:'Reveals which stops have hidden pups.', bark:[600,0.2]},
+  pet_other:{name:'Family Pet', rare:-1, skill:'Lucky Charm', skillText:'+20 coins when you finish a trail.', bark:[500,0.12]},
   bear:   {name:'Golden Retriever', rare:-1, skill:'Cheer', skillText:'One scared pup per trail gets a second chance.', bark:[320,0.18]},
   lip:    {name:'Lab-Hound Mix', rare:-1, skill:'Sniff', skillText:'+5 bonus coins on every right answer.', bark:[200,0.25]},
   golden: {name:'Golden Retriever', rare:0, skill:'Cheer', skillText:'One scared pup per trail gets a second chance.', bark:[320,0.18], names:['Sunny','Biscuit','Honey','Waffles'], persona:['loves everybody and wags at squirrels','carries a stick everywhere, no reason','falls asleep in puddles']},
