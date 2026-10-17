@@ -277,7 +277,7 @@
 <script src="config.js"></script>
 <script src="shared.js"></script>
 <script>
-const {BREEDS,RARE_LABEL,WORLDS,SHELTERS,ITEMS,AVATAR,DEFAULT_AVATAR,makeQ,rollBreed,worldForLevel,R,pick,shuffle}=PT;
+const {BREEDS,SIZE,RARE_LABEL,WORLDS,SHELTERS,ITEMS,AVATAR,DEFAULT_AVATAR,makeQ,rollBreed,worldForLevel,R,pick,shuffle}=PT;
 const sb = supabase.createClient(PUP_CONFIG.SUPABASE_URL||'https://setup-needed.supabase.co', PUP_CONFIG.SUPABASE_ANON_KEY||'x');
 let token = localStorage.getItem('pt_token');
 let S = null;           // kid state from server
@@ -299,6 +299,7 @@ async function rpc(fn, args){
   return data;
 }
 function dogImg(d){return d.image_url||`assets/dogs/${d.breed}.png`}
+function dogScale(d){return +(d.size||SIZE[d.breed]||1)}
 function breedOf(d){return BREEDS[d.breed]||BREEDS.golden}
 function crewHas(breed){return crew.some(id=>{const d=S.dogs.find(x=>x.id===id);return d&&(d.breed===breed||(breed==='golden'&&d.breed==='bear')||(breed==='labhound'&&(d.breed==='lip'||d.breed==='pet_dog'))||(breed==='dachshund'&&d.breed==='pet_cat'))})}
 function avatarHTML(av, cls=''){
@@ -366,9 +367,9 @@ async function goHub(){
   const ss=document.getElementById('shelterStyle');ss.innerHTML=Object.entries(SHELTERS).map(([k,v])=>`<option value="${k}" ${k===S.shelter_style?'selected':''}>${v}</option>`).join('');
   document.getElementById('shelterBg').src=`assets/shelters/${S.shelter_style}.jpg`;
   const yard=document.getElementById('yard');
-  yard.innerHTML=S.dogs.slice(0,8).map(d=>`<img src="${dogImg(d)}" title="${esc(d.name)}" onclick="openDog('${d.id}')" style="cursor:pointer">`).join('')+
+  yard.innerHTML=S.dogs.slice(0,8).map(d=>`<img src="${dogImg(d)}" title="${esc(d.name)}" onclick="openDog('${d.id}')" style="cursor:pointer;height:${Math.round(64*dogScale(d))}px">`).join('')+
     ['bowl','leash','bed'].filter(i=>(S.inventory||{})[i]).map(i=>`<span title="${ITEMS.find(x=>x.id===i).name}">${ITEMS.find(x=>x.id===i).emoji}</span>`).join('');
-  document.getElementById('shelterDogs').innerHTML=S.dogs.map(d=>{const b=breedOf(d);return `<div class="dogcard" onclick="openDog('${d.id}')" style="cursor:pointer"><img src="${dogImg(d)}"><div class="name">${d.happiness<40?'😢 ':''}${esc(d.name)}</div><div class="tag">${b.name} · <span class="rare">${RARE_LABEL[b.rare]}</span></div><div class="meter"><i style="width:${d.happiness}%"></i></div></div>`}).join('');
+  document.getElementById('shelterDogs').innerHTML=S.dogs.map(d=>{const b=breedOf(d);return `<div class="dogcard" onclick="openDog('${d.id}')" style="cursor:pointer"><div style="height:80px;display:flex;align-items:flex-end;justify-content:center"><img src="${dogImg(d)}" style="height:${Math.round(80*dogScale(d))}px"></div><div class="name">${d.happiness<40?'😢 ':''}${esc(d.name)}</div><div class="tag">${b.name} · <span class="rare">${RARE_LABEL[b.rare]}</span></div><div class="meter"><i style="width:${d.happiness}%"></i></div></div>`}).join('');
 }
 async function changeShelter(v){try{await rpc('set_shelter',{p_token:token,p_style:v});S.shelter_style=v;document.getElementById('shelterBg').src=`assets/shelters/${v}.jpg`}catch(e){toast(e.message)}}
 
@@ -376,7 +377,7 @@ async function changeShelter(v){try{await rpc('set_shelter',{p_token:token,p_sty
 let dvId=null;
 function openDog(id){
   const d=S.dogs.find(x=>x.id===id);if(!d)return;dvId=id;const b=breedOf(d);
-  document.getElementById('dvImg').src=dogImg(d);document.getElementById('dvName').textContent=d.name;
+  document.getElementById('dvImg').src=dogImg(d);document.getElementById('dvImg').style.height=Math.round(160*dogScale(d))+'px';document.getElementById('dvName').textContent=d.name;
   document.getElementById('dvBreed').textContent=b.name+' · '+RARE_LABEL[b.rare];
   document.getElementById('dvPersona').textContent='"'+d.persona+'"';
   document.getElementById('dvSkill').textContent='✨ '+b.skill+': '+b.skillText;
@@ -402,7 +403,7 @@ function showWorlds(mode, level){
 function pickWorld(k){pendingWorld=k;showWorlds(pendingMode,pendingLevel)}
 function renderCrew(){
   crew=crew.filter(id=>S.dogs.some(d=>d.id===id));
-  document.getElementById('crewPick').innerHTML=S.dogs.map(d=>{const b=breedOf(d);return `<div class="dogcard ${crew.includes(d.id)?'sel':''}" onclick="toggleCrew('${d.id}')" style="cursor:pointer"><img src="${dogImg(d)}"><div class="name">${esc(d.name)}</div><div class="tag">✨ ${b.skill}</div></div>`}).join('');
+  document.getElementById('crewPick').innerHTML=S.dogs.map(d=>{const b=breedOf(d);return `<div class="dogcard ${crew.includes(d.id)?'sel':''}" onclick="toggleCrew('${d.id}')" style="cursor:pointer"><div style="height:80px;display:flex;align-items:flex-end;justify-content:center"><img src="${dogImg(d)}" style="height:${Math.round(80*dogScale(d))}px"></div><div class="name">${esc(d.name)}</div><div class="tag">✨ ${b.skill}</div></div>`}).join('');
   document.getElementById('crewNote').textContent=crew.length?`Crew: ${crew.map(id=>S.dogs.find(d=>d.id===id).name).join(', ')}`:'Pick a crew!';
 }
 function toggleCrew(id){if(crew.includes(id))crew=crew.filter(x=>x!==id);else if(crew.length<3)crew.push(id);else toast('Only 3 dogs on a trail');renderCrew()}
@@ -437,7 +438,7 @@ async function startTrail(){
   show('trail');music(true);
   document.getElementById('trailWorld').textContent=WORLDS[world].emoji+' '+WORLDS[world].name+(mode==='career'?` · Lv ${level}`:'');
   document.getElementById('bg1').src=document.getElementById('bg2').src=`assets/worlds/${world}.jpg`;
-  document.getElementById('walker').innerHTML=avatarHTML(S.avatar).replace('class="av "','class="av" style="width:70px;height:120px;position:relative"')+crew.map(id=>{const d=S.dogs.find(x=>x.id===id);return `<img class="dog" src="${dogImg(d)}">`}).join('');
+  document.getElementById('walker').innerHTML=avatarHTML(S.avatar).replace('class="av "','class="av" style="width:70px;height:120px;position:relative"')+crew.map(id=>{const d=S.dogs.find(x=>x.id===id);return `<img class="dog" src="${dogImg(d)}" style="height:${Math.round(78*dogScale(d))}px">`}).join('');
   document.getElementById('bossImg').style.display='none';
   clearInterval(friendPoll);friendPoll=setInterval(pollFriendsOnTrail,15000);pollFriendsOnTrail();
   const happyBonus=S.dogs.filter(d=>crew.includes(d.id)&&d.happiness>=80).length;
@@ -469,7 +470,7 @@ function showEvent(){
   document.getElementById('subject').textContent=ev.s;document.getElementById('eventTitle').textContent=ev.t;document.getElementById('bossMeter').textContent='';
   const pa=document.getElementById('passage');pa.style.display=ev.p?'':'none';pa.textContent=ev.p||'';
   let lead='';
-  if(ev.pup){const b=BREEDS[ev.pup];lead=`A ${b.name} peeks out from behind a tree! Get this right and it'll trust you. `;const ps=document.getElementById('pupSprite');ps.src=`assets/dogs/${ev.pup}.png`;ps.style.display='';bark(ev.pup)}
+  if(ev.pup){const b=BREEDS[ev.pup];lead=`A ${b.name} peeks out from behind a tree! Get this right and it'll trust you. `;const ps=document.getElementById('pupSprite');ps.src=`assets/dogs/${ev.pup}.png`;ps.style.height=Math.round(84*(SIZE[ev.pup]||1))+'px';ps.style.display='';bark(ev.pup)}
   document.getElementById('question').textContent=lead+ev.q;
   document.getElementById('feedback').textContent='';
   document.getElementById('nextBtn').style.display='none';
@@ -561,7 +562,7 @@ async function endTrail(){
   document.getElementById('endRight').textContent=`${T.right} / ${T.events.length+T.boss.length}`;
   document.getElementById('endBoss').textContent=won?`Beat ${WORLDS[T.world].bossName} (${T.bossRight}/${T.boss.length})`:`Not this time (${T.bossRight}/${T.boss.length}). Try the level again!`;
   document.getElementById('endPups').textContent=T.found.length;
-  document.getElementById('endDogs').innerHTML=T.found.map(d=>{const b=BREEDS[d.breed];return `<div class="dogcard"><img src="assets/dogs/${d.breed}.png"><div class="name">${esc(d.name)}</div><div class="tag">${b.name} · <span class="rare">${RARE_LABEL[b.rare]}</span></div><div class="tag">"${esc(d.persona)}"</div></div>`}).join('');
+  document.getElementById('endDogs').innerHTML=T.found.map(d=>{const b=BREEDS[d.breed];return `<div class="dogcard"><div style="height:80px;display:flex;align-items:flex-end;justify-content:center"><img src="assets/dogs/${d.breed}.png" style="height:${Math.round(80*dogScale(d))}px"></div><div class="name">${esc(d.name)}</div><div class="tag">${b.name} · <span class="rare">${RARE_LABEL[b.rare]}</span></div><div class="tag">"${esc(d.persona)}"</div></div>`}).join('');
   T=null;
 }
 async function quitTrail(silent){

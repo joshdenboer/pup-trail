@@ -24,6 +24,7 @@ const BREEDS = {
   saintbernard:{name:'Saint Bernard', rare:2, skill:'Rescue', skillText:'One wrong boss answer is forgiven.', bark:[160,0.32], names:['Beethoven','Heidi','Bruno','Clara'], persona:['carries snacks in a barrel','drools when happy, which is always','the softest pillow in the shelter']},
   cat:    {name:'Royal Cat', rare:3, skill:'Nine Lives', skillText:'All crew skills work twice per trail.', bark:[600,0.2], names:['Queen Whiskers','Sir Pounce','Duchess','Mochi'], persona:['acts like she owns the shelter','ignores everyone, then sits on you','knocks things off tables on purpose']},
 };
+const SIZE = {chihuahua:0.5, dachshund:0.6, corgi:0.7, beagle:0.75, cat:0.6, toller:0.85, collie:0.9, heeler:0.85, boxer:0.95, pitbull:0.9, husky:0.95, golden:1, bear:1, labhound:0.95, lip:0.95, germanshepherd:1.05, bernese:1.15, saintbernard:1.2, greatdane:1.3};
 const RARE_LABEL = {'-1':'Family', 0:'Common', 1:'Uncommon', 2:'Rare', 3:'Super Rare'};
 const WORLDS = {
   forest:    {name:'Forest', emoji:'🌲', boss:'raccoons', bossName:'the Raccoon Gang', minLevel:1},
@@ -174,5 +175,5 @@ function rollBreed(){
   return pick(pool);
 }
 function worldForLevel(l){return l>=39?'iceland':l>=26?'rainforest':l>=13?'desert':'forest'}
-return {BREEDS,RARE_LABEL,WORLDS,SHELTERS,ITEMS,AVATAR,DEFAULT_AVATAR,makeQ,rollBreed,worldForLevel,R,pick,shuffle};
+return {BREEDS,SIZE,RARE_LABEL,WORLDS,SHELTERS,ITEMS,AVATAR,DEFAULT_AVATAR,makeQ,rollBreed,worldForLevel,R,pick,shuffle};
 })();
