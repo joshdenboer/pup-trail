@@ -72,6 +72,10 @@
   .shelter .yard{position:absolute;left:0;right:0;bottom:6px;display:flex;justify-content:center;align-items:flex-end;gap:0;flex-wrap:wrap}
   .shelter .yard img{height:64px;filter:drop-shadow(0 4px 3px rgba(0,0,0,.4))}
   .shelter .yard span{font-size:34px;line-height:1}
+  .shelter .sign{position:absolute;left:12px;top:6px;height:52%;aspect-ratio:534/600;filter:drop-shadow(0 4px 4px rgba(0,0,0,.4))}
+  .shelter .sign img{width:100%;height:100%;display:block}
+  .shelter .signText{position:absolute;left:9%;right:9%;top:39%;height:36%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#3b1d05;font-weight:900;line-height:1.05;font-family:"Arial Rounded MT Bold","Trebuchet MS",sans-serif;text-shadow:0 1px 0 #e6a86b;letter-spacing:.5px;font-size:clamp(11px,2.1vw,19px);word-break:break-word}
+  .shelter .signText small{font-size:.8em;font-weight:900}
   .av{position:relative;width:140px;height:260px}
   .av img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain}
   .av.small{width:70px;height:130px}
@@ -127,6 +131,7 @@
   </div>
   <div class="shelter" id="shelterView">
     <img class="bg" id="shelterBg" src="">
+    <div class="sign"><img src="assets/ui/sign.png" alt=""><div class="signText" id="signText"></div></div>
     <div class="yard" id="yard"></div>
   </div>
   <div class="row" style="margin-top:10px">
@@ -366,6 +371,7 @@ async function goHub(){
   const pc=document.getElementById('prizeCard');pc.style.display=S.season_prize?'':'none';document.getElementById('prizeText').textContent=S.season_prize||'';document.getElementById('prizeDays').textContent=S.season_length;
   const ss=document.getElementById('shelterStyle');ss.innerHTML=Object.entries(SHELTERS).map(([k,v])=>`<option value="${k}" ${k===S.shelter_style?'selected':''}>${v}</option>`).join('');
   document.getElementById('shelterBg').src=`assets/shelters/${S.shelter_style}.jpg`;
+  document.getElementById('signText').innerHTML=`${esc(S.name)}${/s$/i.test(S.name)?"'":"'s"}<small>Shelter</small>`;
   const yard=document.getElementById('yard');
   yard.innerHTML=S.dogs.slice(0,8).map(d=>`<img src="${dogImg(d)}" title="${esc(d.name)}" onclick="openDog('${d.id}')" style="cursor:pointer;height:${Math.round(64*dogScale(d))}px">`).join('')+
     ['bowl','leash','bed'].filter(i=>(S.inventory||{})[i]).map(i=>`<span title="${ITEMS.find(x=>x.id===i).name}">${ITEMS.find(x=>x.id===i).emoji}</span>`).join('');
