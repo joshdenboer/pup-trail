@@ -197,7 +197,7 @@ async function addKid(){
   try{await rpc('add_kid',{p_name:$('kName').value.trim(),p_pin:$('kPin').value.trim(),p_grade:+$('kGrade').value});$('kName').value='';$('kPin').value='';await load()}catch(e){$('kidErr').textContent=e.message}
 }
 async function resetPin(id){const p=prompt('New 4-digit PIN');if(!p)return;try{await rpc('set_kid_pin',{p_kid:id,p_pin:p.trim()});alert('PIN updated')}catch(e){alert(e.message)}}
-async function resetToday(id){if(!confirm('Give this kid their full 20 minutes back for today?'))return;try{await rpc('reset_kid_today',{p_kid:id});alert('Done. Have them reload the game.')}catch(e){alert(e.message)}}
+async function resetToday(id){if(!confirm('Give this kid their full 20 minutes back for today?'))return;try{await rpc('reset_kid_today',{p_kid:id});await loadActivity();alert('Done. Have them reload the game.')}catch(e){alert(e.message)}}
 async function resetSeason(id){if(!confirm('Start a new 30-play-day season for this kid? Days played resets to 0 (coins and dogs stay).'))return;await setKid(id,{season_start:new Date().toISOString().slice(0,10)});await load()}
 
 async function loadLinks(){
@@ -264,7 +264,9 @@ async function loadActivity(){
   const {data:pd}=await sb.from('play_days').select('*').gte('day',since).order('day',{ascending:false});
   const {data:runs}=await sb.from('trail_runs').select('*').order('started_at',{ascending:false}).limit(30);
   const byKid=id=>kids.find(k=>k.id===id)?.name||'?';
-  $('activity').innerHTML='<h3>Minutes played (last 14 days)</h3><div class="tw"><table><tr><th>Day</th><th>Kid</th><th>Minutes</th></tr>'+(pd||[]).map(p=>`<tr><td>${p.day}</td><td>${esc(byKid(p.kid_id))}</td><td>${Math.round(p.seconds/60)}</td></tr>`).join('')+'</table></div>'+
+  const today=new Date().toISOString().slice(0,10);
+  const todayRows=kids.map(k=>{const sec=(pd||[]).filter(p=>p.kid_id===k.id&&p.day===today).reduce((a,p)=>a+p.seconds,0);return `<div class="row" style="margin:6px 0"><b style="min-width:90px">${esc(k.name)}</b><span class="tag">${Math.round(sec/60)} of 20 minutes used today</span><button class="small secondary" onclick="resetToday('${k.id}')">Reset today's 20 min</button></div>`}).join('');
+  $('activity').innerHTML='<h3 style="margin-top:0">Today</h3>'+(todayRows||'<p class="tag">No kids yet.</p>')+'<h3>Minutes played (last 14 days)</h3><div class="tw"><table><tr><th>Day</th><th>Kid</th><th>Minutes</th></tr>'+(pd||[]).map(p=>`<tr><td>${p.day}</td><td>${esc(byKid(p.kid_id))}</td><td>${Math.round(p.seconds/60)}</td></tr>`).join('')+'</table></div>'+
     '<h3>Recent trails</h3><div class="tw"><table><tr><th>When</th><th>Kid</th><th>Trail</th><th>Score</th><th>Coins</th></tr>'+(runs||[]).map(r=>`<tr><td>${new Date(r.started_at).toLocaleString()}</td><td>${esc(byKid(r.kid_id))}</td><td>${r.world} ${r.mode==='career'?'Lv '+r.level:'quick'}${r.finished_at?'':' (in progress)'}</td><td>${r.total?r.correct+'/'+r.total:''}</td><td>${r.coins}</td></tr>`).join('')+'</table></div>';
 }
 
