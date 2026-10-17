@@ -17,7 +17,8 @@
   button,select,a{touch-action:manipulation}
   body{margin:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);font-family:"Trebuchet MS",Verdana,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
   button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:10px 16px;background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;font-weight:700;font-size:16px}
-  button.secondary{background:var(--panel2)} button.small{padding:6px 10px;font-size:14px} button.danger{background:var(--bad);color:#3a0919}
+  button{box-shadow:0 3px 0 #1a1040;border:1px solid rgba(255,255,255,.15)} button:active{transform:translateY(2px);box-shadow:0 1px 0 #1a1040}
+  button.secondary{background:var(--panel2);box-shadow:0 3px 0 #150d33} button.small{padding:7px 12px;font-size:14px} button.danger{background:var(--bad);color:#3a0919}
   input,select,textarea{font:inherit;padding:9px;border-radius:10px;border:2px solid var(--panel2);background:#fff;color:#222;font-size:16px;max-width:100%}
   .wrap{max-width:860px;margin:0 auto;padding:16px}
   .card{background:var(--panel);border-radius:16px;padding:16px;margin:12px 0}
@@ -186,7 +187,7 @@ function renderKids(){
       <label><input type="checkbox" ${k.chat_locked?'checked':''} onchange="setKid('${k.id}',{chat_locked:this.checked})"> Lock chat setting</label>
       <button class="small secondary" onclick="resetPin('${k.id}')">Reset PIN</button>
       <button class="small secondary" onclick="resetSeason('${k.id}')">New season</button>
-      <button class="small secondary" onclick="resetToday('${k.id}')">Reset today's 20 min</button>
+      <button class="small" onclick="resetToday('${k.id}')">⏱ Reset today's 20 min</button>
     </div>
     <div class="row" style="margin-top:8px"><span class="tag">Shelter:</span>${kidDogs.filter(d=>d.kid_id===k.id).map(d=>`<span style="background:var(--panel);border-radius:10px;padding:4px 8px;display:inline-flex;align-items:center;gap:6px"><img src="${d.image_url||'assets/dogs/'+d.breed+'.png'}" style="height:28px">${esc(d.name)} <a href="#" onclick="removeDog('${d.id}','${esc(d.name)}');return false" title="Remove from shelter" style="color:var(--bad);text-decoration:none">✕</a></span>`).join('')||'<span class="tag">empty</span>'}</div></div>`).join('')||'<p class="tag">No kids yet.</p>';
 }
@@ -265,7 +266,7 @@ async function loadActivity(){
   const {data:runs}=await sb.from('trail_runs').select('*').order('started_at',{ascending:false}).limit(30);
   const byKid=id=>kids.find(k=>k.id===id)?.name||'?';
   const today=new Date().toISOString().slice(0,10);
-  const todayRows=kids.map(k=>{const sec=(pd||[]).filter(p=>p.kid_id===k.id&&p.day===today).reduce((a,p)=>a+p.seconds,0);return `<div class="row" style="margin:6px 0"><b style="min-width:90px">${esc(k.name)}</b><span class="tag">${Math.round(sec/60)} of 20 minutes used today</span><button class="small secondary" onclick="resetToday('${k.id}')">Reset today's 20 min</button></div>`}).join('');
+  const todayRows=kids.map(k=>{const sec=(pd||[]).filter(p=>p.kid_id===k.id&&p.day===today).reduce((a,p)=>a+p.seconds,0);return `<div class="row" style="margin:6px 0"><b style="min-width:90px">${esc(k.name)}</b><span class="tag">${Math.round(sec/60)} of 20 minutes used today</span><button class="small" onclick="resetToday('${k.id}')">⏱ Reset today's 20 min</button></div>`}).join('');
   $('activity').innerHTML='<h3 style="margin-top:0">Today</h3>'+(todayRows||'<p class="tag">No kids yet.</p>')+'<h3>Minutes played (last 14 days)</h3><div class="tw"><table><tr><th>Day</th><th>Kid</th><th>Minutes</th></tr>'+(pd||[]).map(p=>`<tr><td>${p.day}</td><td>${esc(byKid(p.kid_id))}</td><td>${Math.round(p.seconds/60)}</td></tr>`).join('')+'</table></div>'+
     '<h3>Recent trails</h3><div class="tw"><table><tr><th>When</th><th>Kid</th><th>Trail</th><th>Score</th><th>Coins</th></tr>'+(runs||[]).map(r=>`<tr><td>${new Date(r.started_at).toLocaleString()}</td><td>${esc(byKid(r.kid_id))}</td><td>${r.world} ${r.mode==='career'?'Lv '+r.level:'quick'}${r.finished_at?'':' (in progress)'}</td><td>${r.total?r.correct+'/'+r.total:''}</td><td>${r.coins}</td></tr>`).join('')+'</table></div>';
 }
