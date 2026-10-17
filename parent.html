@@ -74,7 +74,7 @@
         <h3>Add a pet</h3>
         <div class="row"><input id="petName" placeholder="Name" maxlength="14">
           <select id="petKind"><option value="dog">Dog</option><option value="cat">Cat</option><option value="other">Other</option></select>
-          <select id="petSize"><option value="0.6">Small (under 20 lb)</option><option value="0.8">Medium (20–45 lb)</option><option value="1" selected>Large (45–80 lb)</option><option value="1.2">Giant (80+ lb)</option></select></div>
+          <select id="petSize"><option value="0.5">Tiny (under 10 lb)</option><option value="0.65">Small (10–25 lb)</option><option value="0.8">Medium (25–50 lb)</option><option value="1" selected>Large (50–80 lb)</option><option value="1.2">Extra Large (80+ lb)</option></select></div>
         <div class="row" style="margin-top:8px"><input id="petDesc" placeholder="What it looks like: golden retriever, white spot on chest, floppy ears" maxlength="200" style="flex:1;min-width:280px"></div>
         <div class="row" style="margin-top:8px"><input id="petPersona" placeholder="Personality (optional): steals socks, loves the pool" maxlength="120" style="flex:1;min-width:280px"></div>
         <div class="row" style="margin-top:10px"><button onclick="drawPet()" id="drawBtn">🎨 Draw it</button><span class="tag" id="petStatus"></span></div>
@@ -206,7 +206,10 @@ async function respond(id,ok){try{await rpc('respond_friend',{p_link:id,p_approv
 let pets=[], petDraft=null;
 async function loadPets(){
   const {data}=await sb.from('family_pets').select('*').order('created_at');pets=data||[];
-  $('petList').innerHTML=pets.length?'<div class="row">'+pets.map(p=>`<div style="background:var(--panel2);border-radius:12px;padding:8px;text-align:center;width:150px"><img src="${p.image_url}" style="height:90px"><div><b>${esc(p.name)}</b></div><div class="tag">${p.kind}</div><button class="small secondary" style="margin-top:6px" onclick="removePet('${p.id}')">Remove</button></div>`).join('')+'</div>':'<p class="tag">No pets added yet.</p>';
+  const SZ=[['0.5','Tiny'],['0.65','Small'],['0.8','Medium'],['1','Large'],['1.2','Extra Large']];
+  $('petList').innerHTML=pets.length?'<div class="row" style="align-items:flex-end">'+pets.map(p=>`<div style="background:var(--panel2);border-radius:12px;padding:8px;text-align:center;width:170px"><div style="height:110px;display:flex;align-items:flex-end;justify-content:center"><img src="${p.image_url}" style="height:${Math.round(90*(+p.size||1))}px"></div><div><b>${esc(p.name)}</b></div><div class="tag">${p.kind}</div>
+    <select style="margin-top:6px;font-size:14px;padding:4px" onchange="setPetSize('${p.id}',this.value)">${SZ.map(([v,l])=>`<option value="${v}" ${Math.abs(+p.size-+v)<0.01?'selected':''}>${l}</option>`).join('')}</select>
+    <div><button class="small secondary" style="margin-top:6px" onclick="removePet('${p.id}')">Remove</button></div></div>`).join('')+'</div>':'<p class="tag">No pets added yet.</p>';
 }
 async function drawPet(){
   $('petErr').textContent='';const name=$('petName').value.trim(),kind=$('petKind').value,description=$('petDesc').value.trim();
@@ -242,6 +245,7 @@ async function savePet(){
   }catch(e){$('petErr').textContent=e.message}
   $('savePetBtn').disabled=false;
 }
+async function setPetSize(id,v){try{await rpc('set_family_pet_size',{p_pet:id,p_size:+v});await loadPets()}catch(e){alert(e.message)}}
 async function removePet(id){if(!confirm('Remove this pet from the family list? Kids who already have it keep it.'))return;try{await rpc('remove_family_pet',{p_pet:id});await loadPets()}catch(e){alert(e.message)}}
 async function loadActivity(){
   const since=new Date(Date.now()-14*864e5).toISOString().slice(0,10);
